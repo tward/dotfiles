@@ -14,6 +14,28 @@ if [[ "$(uname)" != "Darwin" ]]; then
   exit 1
 fi
 
+STATE_DIR="$HOME/.dotfiles-state"
+STATE_FILE="$STATE_DIR/state.json"
+
+ensure_state_file() {
+  mkdir -p "$STATE_DIR"
+  if [[ ! -f "$STATE_FILE" ]]; then
+    echo '{}' > "$STATE_FILE"
+  fi
+}
+
+read_state() {
+  ensure_state_file
+  jq -r "$1 // empty" "$STATE_FILE"
+}
+
+write_state() {
+  ensure_state_file
+  local tmp
+  tmp=$(jq "$1" "$STATE_FILE")
+  echo "$tmp" > "$STATE_FILE"
+}
+
 is_running() {
   pgrep -x "$1" &>/dev/null
 }
@@ -26,10 +48,29 @@ status() {
       echo "  $svc: stopped"
     fi
   done
+
+  local active
+  active=$(read_state '.devmode.active')
+  if [[ "$active" == "true" ]]; then
+    echo "  devmode: on"
+  else
+    echo "  devmode: off"
+  fi
 }
 
 start() {
   echo "==> Starting developer mode..."
+
+  # Capture Stage Manager state before disabling
+  local sm_enabled
+  sm_enabled=$(defaults read com.apple.WindowManager GloballyEnabled 2>/dev/null || echo "0")
+  write_state ".devmode.active = true | .devmode.stage_manager_was_enabled = ($sm_enabled == 1)"
+
+  # Disable Stage Manager if it's on
+  if [[ "$sm_enabled" == "1" ]]; then
+    echo "  Disabling Stage Manager..."
+    defaults write com.apple.WindowManager GloballyEnabled -bool false
+  fi
 
   yabai --start-service
   skhd --start-service
@@ -61,6 +102,16 @@ stop() {
   yabai --stop-service
   skhd --stop-service
   sketchybar --stop-service
+
+  # Restore Stage Manager if it was on before
+  local sm_was_on
+  sm_was_on=$(read_state '.devmode.stage_manager_was_enabled')
+  if [[ "$sm_was_on" == "true" ]]; then
+    echo "  Restoring Stage Manager..."
+    defaults write com.apple.WindowManager GloballyEnabled -bool true
+  fi
+
+  write_state '.devmode.active = false'
 
   # Restore macOS defaults
   defaults delete NSGlobalDomain KeyRepeat 2>/dev/null || true

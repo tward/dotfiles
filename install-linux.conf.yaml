@@ -4,7 +4,6 @@
 
 - create:
     - ~/.local/bin
-    - ~/.config/ranger
 
 # Requires 4 space indentation or it will fail
 - link:
