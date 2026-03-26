@@ -6,6 +6,10 @@
 #   devmode.sh on      Start services and apply cosmetic defaults
 #   devmode.sh off     Stop services and restore macOS defaults
 #   devmode.sh status  Show whether services are running
+#
+# NOTE: On macOS Tahoe (26.x), yabai/skhd/sketchybar may not appear in
+# System Settings > Accessibility due to a known macOS bug with path-based
+# TCC entries. See: https://github.com/koekeishiya/yabai/issues/2688
 
 set -e
 
@@ -36,6 +40,11 @@ write_state() {
   echo "$tmp" > "$STATE_FILE"
 }
 
+# Read a defaults value, returning a fallback if unset
+read_default() {
+  defaults read "$1" "$2" 2>/dev/null || echo "$3"
+}
+
 is_running() {
   pgrep -x "$1" &>/dev/null
 }
@@ -58,15 +67,47 @@ status() {
   fi
 }
 
+capture_current_state() {
+  write_state "
+    .devmode.active = true
+    | .devmode.stage_manager_was_enabled = ($(read_default com.apple.WindowManager GloballyEnabled 0) == 1)
+    | .devmode.previous.dock_autohide = $(read_default com.apple.dock autohide 0)
+    | .devmode.previous.dock_autohide_delay = $(read_default com.apple.dock autohide-delay -1)
+    | .devmode.previous.dock_autohide_time_modifier = $(read_default com.apple.dock autohide-time-modifier -1)
+    | .devmode.previous.dock_mru_spaces = $(read_default com.apple.dock mru-spaces 1)
+    | .devmode.previous.key_repeat = $(read_default NSGlobalDomain KeyRepeat -1)
+    | .devmode.previous.initial_key_repeat = $(read_default NSGlobalDomain InitialKeyRepeat -1)
+    | .devmode.previous.press_and_hold = $(read_default NSGlobalDomain ApplePressAndHoldEnabled 1)
+    | .devmode.previous.show_all_files = $(read_default com.apple.finder AppleShowAllFiles 0)
+    | .devmode.previous.show_path_bar = $(read_default com.apple.finder ShowPathbar 0)
+    | .devmode.previous.show_status_bar = $(read_default com.apple.finder ShowStatusBar 0)
+    | .devmode.previous.show_all_extensions = $(read_default NSGlobalDomain AppleShowAllExtensions 0)
+    | .devmode.previous.auto_spelling_correction = $(read_default NSGlobalDomain NSAutomaticSpellingCorrectionEnabled 1)
+    | .devmode.previous.window_animations = $(read_default NSGlobalDomain NSAutomaticWindowAnimationsEnabled 1)
+  "
+}
+
+restore_default() {
+  local domain="$1" key="$2" type="$3" state_key="$4"
+  local val
+  val=$(read_state ".devmode.previous.$state_key")
+
+  if [[ -z "$val" || "$val" == "-1" ]]; then
+    defaults delete "$domain" "$key" 2>/dev/null || true
+  else
+    defaults write "$domain" "$key" "-$type" "$val"
+  fi
+}
+
 start() {
   echo "==> Starting developer mode..."
 
-  # Capture Stage Manager state before disabling
-  local sm_enabled
-  sm_enabled=$(defaults read com.apple.WindowManager GloballyEnabled 2>/dev/null || echo "0")
-  write_state ".devmode.active = true | .devmode.stage_manager_was_enabled = ($sm_enabled == 1)"
+  # Capture all current settings before changing anything
+  capture_current_state
 
   # Disable Stage Manager if it's on
+  local sm_enabled
+  sm_enabled=$(read_default com.apple.WindowManager GloballyEnabled 0)
   if [[ "$sm_enabled" == "1" ]]; then
     echo "  Disabling Stage Manager..."
     defaults write com.apple.WindowManager GloballyEnabled -bool false
@@ -111,20 +152,24 @@ stop() {
     defaults write com.apple.WindowManager GloballyEnabled -bool true
   fi
 
-  write_state '.devmode.active = false'
-
-  # Restore macOS defaults
-  defaults delete NSGlobalDomain KeyRepeat 2>/dev/null || true
-  defaults delete NSGlobalDomain InitialKeyRepeat 2>/dev/null || true
-  defaults delete NSGlobalDomain ApplePressAndHoldEnabled 2>/dev/null || true
-  defaults delete com.apple.dock autohide 2>/dev/null || true
-  defaults delete com.apple.dock autohide-delay 2>/dev/null || true
-  defaults delete com.apple.dock autohide-time-modifier 2>/dev/null || true
-  defaults delete com.apple.dock mru-spaces 2>/dev/null || true
-  defaults delete NSGlobalDomain AppleShowAllExtensions 2>/dev/null || true
-  defaults delete NSGlobalDomain NSAutomaticSpellingCorrectionEnabled 2>/dev/null || true
-  defaults delete NSGlobalDomain NSAutomaticWindowAnimationsEnabled 2>/dev/null || true
+  # Restore all previous settings
+  echo "  Restoring previous settings..."
+  restore_default NSGlobalDomain KeyRepeat int key_repeat
+  restore_default NSGlobalDomain InitialKeyRepeat int initial_key_repeat
+  restore_default NSGlobalDomain ApplePressAndHoldEnabled bool press_and_hold
+  restore_default com.apple.dock autohide bool dock_autohide
+  restore_default com.apple.dock autohide-delay float dock_autohide_delay
+  restore_default com.apple.dock autohide-time-modifier float dock_autohide_time_modifier
+  restore_default com.apple.dock mru-spaces bool dock_mru_spaces
+  restore_default com.apple.finder AppleShowAllFiles bool show_all_files
+  restore_default com.apple.finder ShowPathbar bool show_path_bar
+  restore_default com.apple.finder ShowStatusBar bool show_status_bar
+  restore_default NSGlobalDomain AppleShowAllExtensions bool show_all_extensions
+  restore_default NSGlobalDomain NSAutomaticSpellingCorrectionEnabled bool auto_spelling_correction
+  restore_default NSGlobalDomain NSAutomaticWindowAnimationsEnabled bool window_animations
   killall Dock Finder &>/dev/null || true
+
+  write_state '.devmode.active = false'
 
   echo "Developer mode OFF."
   status
