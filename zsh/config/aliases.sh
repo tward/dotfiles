@@ -9,22 +9,12 @@ alias ls="eza -s type"
 alias la="ls -la"
 alias lazygit="lazygit -ucd ~/.config/lazygit/"
 alias grep="grep --color=auto"
-alias editdots="nvim ~/Personal/Repos/dotfiles"
+alias editdots="nvim ~/dev/dotfiles"
 
 # Vim
 alias vimdiff='nvim -d'
 alias vim="nvim"
 alias nvim-kickstart='NVIM_APPNAME="nvim-kickstart" nvim'
-
-# Rails / Ruby
-alias rspec="bundle exec rspec"
-alias be="bundle exec"
-alias rc="bundle exec rails console"
-alias rs="bundle exec rails server"
-alias rdm="bundle exec rails db:migrate"
-alias rdr="bundle exec rails db:rollback"
-alias rg:m="bundle exec rails generate migration"
-alias ba="bundle audit check --update"
 
 # ZSH
 alias zsh:reload='source $ZDOTDIR/.zshrc'
@@ -55,11 +45,10 @@ alias skhd:restart="skhd --restart-service"
 alias skhd:reload="skhd --restart-service"
 
 # Brew
-# alias brew:upgrade:all="brew upgrade; sh ~/Personal/Repos/dotfiles/zsh/user/install_neovim_head.sh; nvim --headless '+Lazy! sync' +qa; yabai:stop; yabai:start;"
 alias brew:upgrade:all="brew upgrade; nvim --headless '+Lazy! sync' +qa > /dev/null; yabai:stop; yabai:start; sketchybar --trigger brew_update"
 alias brew:upgrade="brew upgrade && sketchybar --trigger brew_update"
 alias brew:bundle="brew bundle --file ~/.Brewfile"
-alias brew:dump="brew bundle dump --force --file ~/Personal/Repos/dotfiles/homebrew/Brewfile"
+alias brew:dump="brew bundle dump --force --file ~/dev/dotfiles/homebrew/Brewfile"
 
 # Docker Compose
 alias dc="docker-compose"
@@ -70,9 +59,6 @@ alias dce="docker-compose exec"
 function docker-attach() {
   docker attach $(docker-compose ps -q $1)
 }
-
-# Rails
-alias rails:routes="dcr rails routes | fzf -e"
 
 alias speed-test="cloudflare-speed-cli"
 
