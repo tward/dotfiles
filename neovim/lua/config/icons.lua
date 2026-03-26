@@ -27,7 +27,6 @@ return {
     Array = " ",
     Boolean = "󰨙 ",
     Class = " ",
-    Codeium = "󰘦 ",
     Color = " ",
     Control = " ",
     Collapsed = " ",
