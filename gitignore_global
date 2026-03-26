@@ -1,0 +1,7 @@
+config/definitions.rb
+tags
+.solargraph.yml
+*/**/.DS_Store
+.DS_Store
+*/**/.~lock*
+.irb_history
