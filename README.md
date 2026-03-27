@@ -1,6 +1,6 @@
 # dotfiles
 
-My MacOS focused development environment dotfiles.
+My MacOS focused development environment dotfiles, derived from [Paul Millar's dotfiles](https://github.com/pbmillar/dotfiles).
 
 ## Installation
 
@@ -60,15 +60,6 @@ nvim
 * FZF
 * Starship Prompt
 * LazyGit
-
-## Screenshots
-
-![Desktop](https://github.com/user-attachments/assets/998e7a07-f164-481c-9533-9565f5396203)
-![Neovim](https://github.com/user-attachments/assets/a7d33132-b177-4d1d-aeff-708ebf29c481)
-![Tmux](https://github.com/user-attachments/assets/f547c5f2-7582-4d98-8db1-11e7ac666b34)
-![Lazygit](https://github.com/user-attachments/assets/cc4fbde6-da74-4a3a-b668-edab709f1abb)
-![Tmux Sessions](https://github.com/user-attachments/assets/97508672-318c-43bc-8088-a1cf721093ad)
-![Tmux Search](https://github.com/user-attachments/assets/8adc86ee-50fb-41fe-b7cd-74aa724aae50)
 
 
 ## FZF
