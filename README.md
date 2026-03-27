@@ -1,6 +1,6 @@
 # dotfiles
 
-My MacOS focused development environment dotfiles, derived from [Paul Millar's dotfiles](https://github.com/pbmillar/dotfiles).
+My MacOS focused development environment dotfiles, derived from [Paul Alden's dotfiles](https://github.com/paulalden/dotfiles).
 
 ## Installation
 
