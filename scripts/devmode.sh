@@ -70,7 +70,6 @@ status() {
 capture_current_state() {
   write_state "
     .devmode.active = true
-    | .devmode.stage_manager_was_enabled = ($(read_default com.apple.WindowManager GloballyEnabled 0) == 1)
     | .devmode.previous.dock_autohide = $(read_default com.apple.dock autohide 0)
     | .devmode.previous.dock_autohide_delay = $(read_default com.apple.dock autohide-delay -1)
     | .devmode.previous.dock_autohide_time_modifier = $(read_default com.apple.dock autohide-time-modifier -1)
@@ -84,7 +83,6 @@ capture_current_state() {
     | .devmode.previous.show_all_extensions = $(read_default NSGlobalDomain AppleShowAllExtensions 0)
     | .devmode.previous.auto_spelling_correction = $(read_default NSGlobalDomain NSAutomaticSpellingCorrectionEnabled 1)
     | .devmode.previous.window_animations = $(read_default NSGlobalDomain NSAutomaticWindowAnimationsEnabled 1)
-    | .devmode.previous.autohide_menu_bar = $(read_default com.apple.controlcenter AutoHideMenuBarOption 2)
   "
 }
 
@@ -113,14 +111,6 @@ start() {
   # Capture all current settings before changing anything
   capture_current_state
 
-  # Disable Stage Manager if it's on
-  local sm_enabled
-  sm_enabled=$(read_default com.apple.WindowManager GloballyEnabled 0)
-  if [[ "$sm_enabled" == "1" ]]; then
-    echo "  Disabling Stage Manager..."
-    defaults write com.apple.WindowManager GloballyEnabled -bool false
-  fi
-
   yabai --start-service
   skhd --start-service
   brew services start sketchybar
@@ -139,10 +129,13 @@ start() {
   defaults write NSGlobalDomain AppleShowAllExtensions -bool true
   defaults write NSGlobalDomain NSAutomaticSpellingCorrectionEnabled -bool false
   defaults write NSGlobalDomain NSAutomaticWindowAnimationsEnabled -bool false
-  defaults write com.apple.controlcenter AutoHideMenuBarOption -int 0
-  killall Dock Finder SystemUIServer &>/dev/null || true
+  killall Dock Finder &>/dev/null || true
 
   echo "Developer mode ON."
+  echo ""
+  echo "  Manual steps:"
+  echo "    - Turn off Stage Manager in System Settings > Desktop & Dock"
+  echo "    - Set menu bar to 'Always' in System Settings > Control Centre"
   status
 }
 
@@ -152,14 +145,6 @@ stop() {
   yabai --stop-service
   skhd --stop-service
   brew services stop sketchybar
-
-  # Restore Stage Manager if it was on before
-  local sm_was_on
-  sm_was_on=$(read_state '.devmode.stage_manager_was_enabled')
-  if [[ "$sm_was_on" == "true" ]]; then
-    echo "  Restoring Stage Manager..."
-    defaults write com.apple.WindowManager GloballyEnabled -bool true
-  fi
 
   # Restore all previous settings
   echo "  Restoring previous settings..."
@@ -176,12 +161,15 @@ stop() {
   restore_default NSGlobalDomain AppleShowAllExtensions bool show_all_extensions
   restore_default NSGlobalDomain NSAutomaticSpellingCorrectionEnabled bool auto_spelling_correction
   restore_default NSGlobalDomain NSAutomaticWindowAnimationsEnabled bool window_animations
-  restore_default com.apple.controlcenter AutoHideMenuBarOption int autohide_menu_bar
-  killall Dock Finder SystemUIServer &>/dev/null || true
+  killall Dock Finder &>/dev/null || true
 
   write_state '.devmode.active = false'
 
   echo "Developer mode OFF."
+  echo ""
+  echo "  Manual steps:"
+  echo "    - Turn on Stage Manager in System Settings > Desktop & Dock"
+  echo "    - Set menu bar to preferred setting in System Settings > Control Centre"
   status
 }
 
