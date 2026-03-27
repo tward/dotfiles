@@ -123,7 +123,7 @@ start() {
 
   yabai --start-service
   skhd --start-service
-  sketchybar --start-service
+  brew services start sketchybar
 
   # Cosmetic: hide Dock, fast key repeat
   defaults write NSGlobalDomain KeyRepeat -int 2
@@ -151,7 +151,7 @@ stop() {
 
   yabai --stop-service
   skhd --stop-service
-  sketchybar --stop-service
+  brew services stop sketchybar
 
   # Restore Stage Manager if it was on before
   local sm_was_on
