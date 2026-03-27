@@ -98,6 +98,17 @@ if ! command -v eza &>/dev/null; then
   fi
 fi
 
+# --- Kitty terminal ---
+echo ""
+echo "==> Installing Kitty..."
+if ! command -v kitty &>/dev/null; then
+  curl -fL https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin launch=n
+  ln -sf "$HOME/.local/kitty.app/bin/kitty" /usr/local/bin/kitty
+  ln -sf "$HOME/.local/kitty.app/bin/kitten" /usr/local/bin/kitten
+else
+  echo "  Kitty already installed."
+fi
+
 # --- Neovim via PPA ---
 echo ""
 echo "==> Installing Neovim via PPA..."

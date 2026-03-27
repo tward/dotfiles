@@ -12,6 +12,7 @@
     ~/.gitconfig: gitconfig
     ~/.gitignore_global: gitignore_global
     ~/.config/htop: htop
+    ~/.config/kitty: kitty
     ~/.config/lazygit: lazygit
     ~/.config/nvim: neovim
     ~/.config/ranger: ranger
