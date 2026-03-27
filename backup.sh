@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
-# Backup existing config files before installing dotfiles.
+# Backup and remove existing config files before installing dotfiles.
 # Creates ~/.dotfiles-backup/<timestamp>/ with copies of anything
-# that would be replaced by dotbot symlinks.
+# that would be replaced by dotbot symlinks, then removes the originals
+# so dotbot can create symlinks without conflicts.
 
 set -e
 
@@ -53,6 +54,7 @@ for target in "${TARGETS[@]}"; do
   dest="$BACKUP_DIR/$rel"
   mkdir -p "$(dirname "$dest")"
   cp -R "$expanded" "$dest"
+  rm -rf "$expanded"
   echo "  $rel"
   backed_up=$((backed_up + 1))
 done
@@ -60,6 +62,6 @@ done
 if [[ $backed_up -eq 0 ]]; then
   echo "Nothing to back up — no existing config files found (or all are already symlinks)."
 else
-  echo "Backed up $backed_up item(s)."
+  echo "Backed up and removed $backed_up item(s). Dotbot can now create symlinks."
   echo "Restore with: ./uninstall.sh --restore $TIMESTAMP"
 fi
