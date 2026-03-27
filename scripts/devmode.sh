@@ -108,7 +108,7 @@ set_menu_bar() {
         set allElems to entire contents of window \"Menu Bar\"
         repeat with elem in allElems
           if class of elem is pop up button then
-            if value of elem is \"$current\" then
+            if name of elem is \"Automatically hide and show the menu bar\" then
               click elem
               delay 0.3
               click menu item \"$desired\" of menu 1 of elem
