@@ -84,7 +84,7 @@ capture_current_state() {
     | .devmode.previous.show_all_extensions = $(read_default NSGlobalDomain AppleShowAllExtensions 0)
     | .devmode.previous.auto_spelling_correction = $(read_default NSGlobalDomain NSAutomaticSpellingCorrectionEnabled 1)
     | .devmode.previous.window_animations = $(read_default NSGlobalDomain NSAutomaticWindowAnimationsEnabled 1)
-    | .devmode.previous.hide_menu_bar = $(read_default NSGlobalDomain _HIHideMenuBar 0)
+    | .devmode.previous.autohide_menu_bar = $(read_default com.apple.controlcenter AutoHideMenuBarOption 2)
   "
 }
 
@@ -139,7 +139,7 @@ start() {
   defaults write NSGlobalDomain AppleShowAllExtensions -bool true
   defaults write NSGlobalDomain NSAutomaticSpellingCorrectionEnabled -bool false
   defaults write NSGlobalDomain NSAutomaticWindowAnimationsEnabled -bool false
-  defaults write NSGlobalDomain _HIHideMenuBar -bool true
+  defaults write com.apple.controlcenter AutoHideMenuBarOption -int 0
   killall Dock Finder SystemUIServer &>/dev/null || true
 
   echo "Developer mode ON."
@@ -176,7 +176,7 @@ stop() {
   restore_default NSGlobalDomain AppleShowAllExtensions bool show_all_extensions
   restore_default NSGlobalDomain NSAutomaticSpellingCorrectionEnabled bool auto_spelling_correction
   restore_default NSGlobalDomain NSAutomaticWindowAnimationsEnabled bool window_animations
-  restore_default NSGlobalDomain _HIHideMenuBar bool hide_menu_bar
+  restore_default com.apple.controlcenter AutoHideMenuBarOption int autohide_menu_bar
   killall Dock Finder SystemUIServer &>/dev/null || true
 
   write_state '.devmode.active = false'
