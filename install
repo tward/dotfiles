@@ -30,12 +30,16 @@ if [[ "$(uname)" == "Darwin" ]]; then
   fi
 else
   CONFIG="install-linux.conf.yaml"
+  VENV_DIR="${BASEDIR}/.venv"
 
-  # Install dotbot if not present
-  if ! command -v dotbot &>/dev/null; then
-    echo "Installing dotbot via pip..."
-    pip3 install dotbot
+  # Install dotbot in a venv
+  if [[ ! -x "${VENV_DIR}/bin/dotbot" ]]; then
+    echo "Installing dotbot in venv..."
+    python3 -m venv "${VENV_DIR}"
+    "${VENV_DIR}/bin/pip" install dotbot
   fi
+
+  PATH="${VENV_DIR}/bin:${PATH}"
 fi
 
 echo ""

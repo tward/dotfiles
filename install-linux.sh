@@ -56,6 +56,7 @@ APT_PACKAGES=(
   curl
   ncurses-term
   python3-pip
+  python3-venv
 )
 
 echo "The following apt packages will be installed:"
