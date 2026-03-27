@@ -84,6 +84,9 @@ set_stage_manager() {
         end tell
       end tell
     ' 2>/dev/null
+    sleep 3
+    osascript -e 'tell application "System Settings" to quit' 2>/dev/null || true
+    sleep 1
     echo "  Stage Manager: $desired"
   fi
 }
@@ -119,6 +122,9 @@ set_menu_bar() {
       end tell
     end tell
   " 2>/dev/null
+  sleep 3
+  osascript -e 'tell application "System Settings" to quit' 2>/dev/null || true
+  sleep 1
   echo "  Menu bar: $desired"
 }
 
@@ -194,10 +200,6 @@ start() {
   set_stage_manager off
   set_menu_bar "Always"
 
-  # Close System Settings
-  osascript -e 'tell application "System Settings" to quit' 2>/dev/null || true
-  sleep 0.5
-
   yabai --start-service
   skhd --start-service
   brew services start sketchybar
@@ -241,10 +243,6 @@ stop() {
   if [[ -n "$prev_menu" ]]; then
     set_menu_bar "$prev_menu"
   fi
-
-  # Close System Settings
-  osascript -e 'tell application "System Settings" to quit' 2>/dev/null || true
-  sleep 0.5
 
   # Restore all previous settings
   echo "  Restoring previous settings..."
