@@ -19,8 +19,8 @@ sketchybar --bar \
   corner_radius=12 \
   blur_radius=30 \
   border_width=1 \
-  y_offset=15  \
-  margin=15 \
+  y_offset=12  \
+  margin=16 \
   display=all \
   topmost=off \
   sticky=on \
