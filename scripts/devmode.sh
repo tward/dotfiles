@@ -95,6 +95,13 @@ restore_default() {
 
   if [[ -z "$val" || "$val" == "-1" ]]; then
     defaults delete "$domain" "$key" 2>/dev/null || true
+  elif [[ "$type" == "bool" ]]; then
+    # defaults write -bool expects true/false, not 1/0
+    if [[ "$val" == "1" || "$val" == "true" ]]; then
+      defaults write "$domain" "$key" -bool true
+    else
+      defaults write "$domain" "$key" -bool false
+    fi
   else
     defaults write "$domain" "$key" "-$type" "$val"
   fi
