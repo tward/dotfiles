@@ -101,10 +101,11 @@ fi
 # --- Kitty terminal ---
 echo ""
 echo "==> Installing Kitty..."
+REAL_HOME=$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)
 if ! command -v kitty &>/dev/null; then
-  curl -fL https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin launch=n
-  ln -sf "$HOME/.local/kitty.app/bin/kitty" /usr/local/bin/kitty
-  ln -sf "$HOME/.local/kitty.app/bin/kitten" /usr/local/bin/kitten
+  sudo -u "${SUDO_USER:-$USER}" sh -c "curl -fL https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin launch=n"
+  ln -sf "${REAL_HOME}/.local/kitty.app/bin/kitty" /usr/local/bin/kitty
+  ln -sf "${REAL_HOME}/.local/kitty.app/bin/kitten" /usr/local/bin/kitten
 else
   echo "  Kitty already installed."
 fi
