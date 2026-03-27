@@ -66,7 +66,7 @@ echo "The following apt packages will be installed:"
 printf '  %s\n' "${APT_PACKAGES[@]}"
 echo ""
 echo "The following PPAs will be added:"
-echo "  ppa:neovim-ppa/stable (neovim)"
+echo "  ppa:neovim-ppa/unstable (neovim 0.11+)"
 echo ""
 echo "The following will be installed from external sources:"
 echo "  kitty (official installer)"
@@ -117,7 +117,7 @@ fi
 # --- Neovim via PPA ---
 echo ""
 echo "==> Installing Neovim via PPA..."
-add-apt-repository -y ppa:neovim-ppa/stable
+add-apt-repository -y ppa:neovim-ppa/unstable
 apt update
 apt install -y neovim
 
