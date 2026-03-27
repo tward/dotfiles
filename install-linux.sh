@@ -15,7 +15,10 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   rm -f /usr/local/bin/diff-so-fancy
   rm -f /usr/local/bin/fd
   rm -f /usr/local/bin/bat
+  rm -f /usr/local/bin/kitty
+  rm -f /usr/local/bin/kitten
   echo "Done. apt-installed packages are untouched — remove with apt if needed."
+  echo "Kitty app remains at ~/.local/kitty.app — remove manually if desired."
   exit 0
 fi
 
@@ -56,17 +59,19 @@ APT_PACKAGES=(
   curl
   ncurses-term
   python3-pip
+  python3-venv
 )
 
 echo "The following apt packages will be installed:"
 printf '  %s\n' "${APT_PACKAGES[@]}"
 echo ""
 echo "The following PPAs will be added:"
-echo "  ppa:neovim-ppa/stable (neovim)"
+echo "  ppa:neovim-ppa/unstable (neovim 0.11+)"
 echo ""
-echo "The following will be downloaded from GitHub:"
-echo "  lazygit (latest release)"
-echo "  diff-so-fancy (latest release)"
+echo "The following will be installed from external sources:"
+echo "  kitty (official installer)"
+echo "  lazygit (GitHub release)"
+echo "  diff-so-fancy (GitHub release)"
 echo ""
 read -p "Proceed? [y/N] " answer
 [[ "$answer" =~ ^[Yy]$ ]] || exit 0
@@ -97,10 +102,22 @@ if ! command -v eza &>/dev/null; then
   fi
 fi
 
+# --- Kitty terminal ---
+echo ""
+echo "==> Installing Kitty..."
+REAL_HOME=$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)
+if ! command -v kitty &>/dev/null; then
+  sudo -u "${SUDO_USER:-$USER}" HOME="${REAL_HOME}" sh -c "curl -fL https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin launch=n"
+  ln -sf "${REAL_HOME}/.local/kitty.app/bin/kitty" /usr/local/bin/kitty
+  ln -sf "${REAL_HOME}/.local/kitty.app/bin/kitten" /usr/local/bin/kitten
+else
+  echo "  Kitty already installed."
+fi
+
 # --- Neovim via PPA ---
 echo ""
 echo "==> Installing Neovim via PPA..."
-add-apt-repository -y ppa:neovim-ppa/stable
+add-apt-repository -y ppa:neovim-ppa/unstable
 apt update
 apt install -y neovim
 
