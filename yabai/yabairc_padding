@@ -1,0 +1,15 @@
+#!/usr/bin/env sh
+
+# Called at startup and on display_added/removed/moved events.
+# detect via lid state (AppleClamshellState): closed = external only (56), open = built-in (24).
+# built-in MacBook display: 24 (notch safe area)
+# external displays: 56 (room for sketchybar)
+
+in_clamshell=$(ioreg -r -k AppleClamshellState -d 2 2>/dev/null | grep -c '"AppleClamshellState" = Yes')
+yabai -m query --displays | jq -r '.[].spaces[]' | while read -r space; do
+  if [ "$in_clamshell" -gt 0 ]; then
+    yabai -m config --space "$space" top_padding 56
+  else
+    yabai -m config --space "$space" top_padding 24
+  fi
+done
