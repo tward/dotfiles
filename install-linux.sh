@@ -17,6 +17,21 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   rm -f /usr/local/bin/bat
   rm -f /usr/local/bin/kitty
   rm -f /usr/local/bin/kitten
+
+  REAL_HOME=$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)
+
+  rm -f "${REAL_HOME}/.local/share/applications/kitty.desktop"
+  rm -f "${REAL_HOME}/.local/share/applications/kitty-open.desktop"
+
+  NERD_FONT_DIR="${REAL_HOME}/.local/share/fonts/NerdFonts"
+  if [[ -d "$NERD_FONT_DIR" ]]; then
+    echo "==> Removing Nerd Fonts..."
+    rm -rf "${NERD_FONT_DIR}/Hack" "${NERD_FONT_DIR}/NerdFontsSymbolsOnly"
+    rmdir "$NERD_FONT_DIR" 2>/dev/null || true
+    sudo -u "${SUDO_USER:-$USER}" HOME="${REAL_HOME}" \
+      fc-cache -f "${REAL_HOME}/.local/share/fonts" 2>/dev/null || true
+  fi
+
   echo "Done. apt-installed packages are untouched — remove with apt if needed."
   echo "Kitty app remains at ~/.local/kitty.app — remove manually if desired."
   exit 0
@@ -60,6 +75,8 @@ APT_PACKAGES=(
   ncurses-term
   python3-pip
   python3-venv
+  fontconfig
+  xz-utils
 )
 
 echo "The following apt packages will be installed:"
@@ -70,6 +87,7 @@ echo "  ppa:neovim-ppa/unstable (neovim 0.11+)"
 echo ""
 echo "The following will be installed from external sources:"
 echo "  kitty (official installer)"
+echo "  Hack Nerd Font + Symbols-Only Nerd Font (~/.local/share/fonts)"
 echo "  lazygit (GitHub release)"
 echo "  diff-so-fancy (GitHub release)"
 echo ""
@@ -112,6 +130,59 @@ if ! command -v kitty &>/dev/null; then
   ln -sf "${REAL_HOME}/.local/kitty.app/bin/kitten" /usr/local/bin/kitten
 else
   echo "  Kitty already installed."
+fi
+
+# Desktop integration: register kitty.desktop / kitty-open.desktop with absolute
+# paths into the user-local kitty.app, and mark it as the xdg-terminal. Steps
+# verbatim from https://sw.kovidgoyal.net/kitty/binary/#desktop-integration-on-linux
+if [[ ! -f "${REAL_HOME}/.local/share/applications/kitty.desktop" ]]; then
+  echo "  Registering Kitty desktop entries..."
+  sudo -u "${SUDO_USER:-$USER}" HOME="${REAL_HOME}" bash -c '
+    set -e
+    mkdir -p "$HOME/.local/share/applications" "$HOME/.config"
+    cp "$HOME/.local/kitty.app/share/applications/kitty.desktop" "$HOME/.local/share/applications/"
+    cp "$HOME/.local/kitty.app/share/applications/kitty-open.desktop" "$HOME/.local/share/applications/"
+    sed -i "s|Icon=kitty|Icon=$HOME/.local/kitty.app/share/icons/hicolor/256x256/apps/kitty.png|g" "$HOME/.local/share/applications/"kitty*.desktop
+    sed -i "s|Exec=kitty|Exec=$HOME/.local/kitty.app/bin/kitty|g" "$HOME/.local/share/applications/"kitty*.desktop
+    echo "kitty.desktop" > "$HOME/.config/xdg-terminals.list"
+  '
+else
+  echo "  Kitty desktop entry already registered."
+fi
+
+# --- Nerd Fonts (Hack + Symbols-Only) ---
+echo ""
+echo "==> Installing Nerd Fonts (Hack, Symbols-Only)..."
+
+NERD_FONT_DIR="${REAL_HOME}/.local/share/fonts/NerdFonts"
+
+if [[ -f "${NERD_FONT_DIR}/Hack/.installed" ]] \
+   && [[ -f "${NERD_FONT_DIR}/NerdFontsSymbolsOnly/.installed" ]]; then
+  echo "  Nerd Fonts already installed."
+else
+  sudo -u "${SUDO_USER:-$USER}" HOME="${REAL_HOME}" bash -c '
+    set -e
+    mkdir -p "$HOME/.local/share/fonts/NerdFonts"
+    cd "$HOME/.local/share/fonts/NerdFonts"
+    for family in Hack NerdFontsSymbolsOnly; do
+      marker="$family/.installed"
+      if [[ -f "$marker" ]]; then
+        echo "  ${family} already present."
+        continue
+      fi
+      echo "  Downloading ${family}.tar.xz..."
+      url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${family}.tar.xz"
+      mkdir -p "$family"
+      if curl -fL "$url" | tar -xJ -C "$family"; then
+        touch "$marker"
+        echo "  Installed ${family}"
+      else
+        echo "WARNING: Failed to download/extract ${family}. Cleaning up."
+        rm -rf "$family"
+      fi
+    done
+    fc-cache -f "$HOME/.local/share/fonts"
+  '
 fi
 
 # --- Neovim via PPA ---
