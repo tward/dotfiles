@@ -14,9 +14,11 @@
     ~/.config/htop: htop
     ~/.config/kitty: kitty
     ~/.config/lazygit: lazygit
+    ~/.config/niri: niri
     ~/.config/nvim: neovim
     ~/.config/ranger: ranger
     ~/.config/tmux: tmux
+    ~/.config/waybar: waybar
     ~/.editorconfig: editorconfig
     ~/.zshenv: zshenv
     ~/.config/zsh: zsh

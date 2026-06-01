@@ -23,6 +23,13 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   rm -f "${REAL_HOME}/.local/share/applications/kitty.desktop"
   rm -f "${REAL_HOME}/.local/share/applications/kitty-open.desktop"
 
+  # Unmask the waybar service if we masked it (symlink to /dev/null).
+  WAYBAR_MASK="${REAL_HOME}/.config/systemd/user/waybar.service"
+  if [[ -L "$WAYBAR_MASK" ]] && [[ "$(readlink "$WAYBAR_MASK")" == /dev/null ]]; then
+    rm -f "$WAYBAR_MASK"
+    echo "==> Unmasked waybar.service"
+  fi
+
   NERD_FONT_DIR="${REAL_HOME}/.local/share/fonts/NerdFonts"
   if [[ -d "$NERD_FONT_DIR" ]]; then
     echo "==> Removing Nerd Fonts..."
@@ -219,6 +226,24 @@ if [[ -n "$LAZYGIT_ARCH" ]]; then
   else
     echo "WARNING: Failed to download diff-so-fancy. Skipping."
   fi
+fi
+
+# --- Mask packaged waybar service ---
+# The waybar apt package ships a systemd user service enabled by default
+# (WantedBy=graphical-session.target). It would start a second bar alongside
+# niri's own spawn-at-startup, and would also launch waybar under GNOME. We
+# start waybar only from niri's config, so mask the service. A user-scope
+# disable does not stick because the package enables it in global scope.
+echo ""
+echo "==> Masking packaged waybar systemd service..."
+if [[ -e /usr/lib/systemd/user/waybar.service ]] || [[ -e /etc/systemd/user/waybar.service ]]; then
+  REAL_HOME=$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)
+  MASK_DIR="${REAL_HOME}/.config/systemd/user"
+  sudo -u "${SUDO_USER:-$USER}" mkdir -p "$MASK_DIR"
+  sudo -u "${SUDO_USER:-$USER}" ln -sf /dev/null "${MASK_DIR}/waybar.service"
+  echo "  Masked waybar.service (waybar starts from niri config only)."
+else
+  echo "  No packaged waybar.service found; nothing to mask."
 fi
 
 # --- Set default shell ---

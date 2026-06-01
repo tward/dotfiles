@@ -1,0 +1,49 @@
+* {
+    font-family: "Hack Nerd Font Mono", "Symbols Nerd Font", monospace;
+    font-size: 13px;
+    min-height: 0;
+}
+
+window#waybar {
+    background: rgba(30, 30, 46, 0.92);
+    color: #cdd6f4;
+}
+
+#workspaces button {
+    padding: 0 8px;
+    margin: 2px 2px;
+    color: #cdd6f4;
+    background: transparent;
+    border-radius: 6px;
+}
+
+#workspaces button.active {
+    background: #585b70;
+}
+
+#window,
+#clock,
+#mpris,
+#cpu,
+#memory,
+#temperature,
+#pulseaudio,
+#network,
+#tray,
+#custom-power {
+    padding: 0 10px;
+}
+
+#clock {
+    font-weight: bold;
+}
+
+#temperature.critical,
+#network.disconnected,
+#pulseaudio.muted {
+    color: #f38ba8;
+}
+
+#custom-power {
+    color: #f38ba8;
+}
