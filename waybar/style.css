@@ -3,7 +3,7 @@
    a #2e3440 surface at 80% alpha, detached from the screen edges (see margins
    in config.jsonc), with filled workspace pills for the focused workspace. */
 
-@define-color bg       rgba(46, 52, 64, 0.8);  /* BG_80   #2e3440 @ 80% */
+@define-color bg       rgba(46, 52, 64, 0.66);  /* BG_80   #2e3440 @ 66% */
 @define-color bg_solid #2e3440;                /* BG      active-pill text */
 @define-color bg_pill  #1c1f26;                /* GREY16  inactive pill   */
 @define-color fg       #999797;                /* FG                      */
