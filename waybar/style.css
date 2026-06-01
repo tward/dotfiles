@@ -25,6 +25,12 @@ window#waybar {
     padding: 0 8px;
 }
 
+/* Leading inset so the first pill isn't tight against the rounded left edge
+   (the window padding alone leaves it looking cramped). */
+#workspaces {
+    margin-left: 6px;
+}
+
 /* Workspace pills. Active mirrors sketchybar's space.sh highlight: the focused
    space is filled with FG and its glyph drawn in the dark BG colour. Waybar
    versions differ on the class name, so style both .active and .focused. */
