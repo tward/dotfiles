@@ -20,6 +20,9 @@ window#waybar {
     background: @bg;
     color: @fg;
     border-radius: 12px;
+    /* Inner padding so the first/last modules don't butt against the rounded
+       edges (workspace pills on the left, power icon on the right). */
+    padding: 0 8px;
 }
 
 /* Workspace pills. Active mirrors sketchybar's space.sh highlight: the focused
