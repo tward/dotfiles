@@ -6,6 +6,11 @@
     "height": 30,
     "spacing": 6,
 
+    // Float the bar off the screen edges, matching sketchybar's margin/y_offset.
+    "margin-top": 8,
+    "margin-left": 12,
+    "margin-right": 12,
+
     "modules-left": ["niri/workspaces", "niri/window"],
     "modules-center": ["clock"],
     "modules-right": ["mpris", "cpu", "memory", "temperature", "pulseaudio", "network", "tray", "custom/power"],
@@ -24,23 +29,26 @@
         "max-length": 50
     },
 
-    "cpu": { "format": " {usage}%", "interval": 2 },
+    "cpu": { "format": "<span size='xx-large'></span> <span rise='2500'>{usage}%</span>", "interval": 2 },
 
     "memory": {
-        "format": "󱤓 {percentage}%",
+        "format": "<span size='xx-large'>󱤓</span> <span rise='2500'>{percentage}%</span>",
         "interval": 5,
         "tooltip-format": "{used:0.1f}G / {total:0.1f}G used"
     },
 
     "temperature": {
-        "format": "{temperatureC}°C",
+        // No icon, but an invisible xx-large glyph gives temp the same tall
+        // line-box as cpu/mem so the same rise centres it identically, instead
+        // of fighting the shorter natural line-box with a large negative rise.
+        "format": "<span size='xx-large' alpha='1%'>​</span><span rise='2500'>{temperatureC}°C</span>",
         "critical-threshold": 80
     },
 
     "pulseaudio": {
-        "format": "{icon} {volume}%",
-        "format-muted": "󰝟 muted",
-        "format-icons": { "default": ["󰕿", "󰖀", "󰕾"] },
+        "format": "{icon} <span rise='2100'>{volume}%</span>",
+        "format-muted": "<span size='xx-large'>󰝟</span> <span rise='2500'>muted</span>",
+        "format-icons": { "default": ["<span size='xx-large'>󰕿</span>", "<span size='xx-large'>󰖀</span>", "<span size='xx-large'>󰕾</span>"] },
         "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
     },
 
@@ -54,7 +62,7 @@
     "tray": { "spacing": 8 },
 
     "custom/power": {
-        "format": "⏻",
+        "format": "<span size='xx-large'>⏻</span>",
         "tooltip-format": "Power menu",
         "on-click": "sh $HOME/.config/waybar/powermenu.sh"
     }

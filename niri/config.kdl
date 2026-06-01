@@ -155,8 +155,9 @@ layout {
 
     // You can change how the focus ring looks.
     focus-ring {
-        // Uncomment this line to disable the focus ring.
-        // off
+        // Disabled in favour of dimming unfocused windows (see the is-active=false
+        // window-rule below). Focus is shown by the active window staying bright.
+        off
 
         // How many logical pixels the ring extends out from the windows.
         width 4
@@ -167,7 +168,7 @@ layout {
         // - CSS-like notation: "rgb(255, 127, 0)", rgba(), hsl() and a few others.
 
         // Color of the ring on the active monitor.
-        active-color "#7fc8ff"
+        active-color "#a3be8c"
 
         // Color of the ring on inactive monitors.
         //
@@ -274,6 +275,10 @@ layout {
 // ever starts from this line. To undo: systemctl --user unmask waybar.service
 spawn-at-startup "waybar"
 
+// Set the desktop wallpaper. The image is not tracked in dotfiles; place it at
+// ~/Pictures/wallpaper.png. spawn-sh is used so $HOME expands (plain spawn does not).
+spawn-sh-at-startup "swaybg -i $HOME/Pictures/wallpaper.png -m fill"
+
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
 
@@ -348,6 +353,14 @@ window-rule {
 window-rule {
     geometry-corner-radius 12
     clip-to-geometry true
+}
+
+// Dim unfocused windows instead of drawing a focus ring (focus-ring is off
+// above). The active window stays fully opaque; everything else fades back.
+// With a single window nothing is inactive, so nothing dims.
+window-rule {
+    match is-active=false
+    opacity 0.8
 }
 
 binds {

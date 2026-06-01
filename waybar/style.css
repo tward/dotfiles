@@ -1,24 +1,51 @@
+/* Nord palette — mirrors the macOS sketchybar setup (sketchybar/scripts/config-nord.sh).
+   The bar reproduces sketchybar's floating, rounded, semi-transparent look:
+   a #2e3440 surface at 80% alpha, detached from the screen edges (see margins
+   in config.jsonc), with filled workspace pills for the focused workspace. */
+
+@define-color bg       rgba(46, 52, 64, 0.66);  /* BG_80   #2e3440 @ 66% */
+@define-color bg_solid #2e3440;                /* BG      active-pill text */
+@define-color bg_pill  #1c1f26;                /* GREY16  inactive pill   */
+@define-color fg       #999797;                /* FG                      */
+@define-color red      #bf616a;                /* RED                     */
+
 * {
     font-family: "Hack Nerd Font Mono", "Symbols Nerd Font", monospace;
     font-size: 13px;
+    font-weight: bold;
     min-height: 0;
 }
 
 window#waybar {
-    background: rgba(30, 30, 46, 0.92);
-    color: #cdd6f4;
+    background: @bg;
+    color: @fg;
+    border-radius: 12px;
+    /* Inner padding so the first/last modules don't butt against the rounded
+       edges (workspace pills on the left, power icon on the right). */
+    padding: 0 8px;
 }
 
+/* Leading inset so the first pill isn't tight against the rounded left edge
+   (the window padding alone leaves it looking cramped). */
+#workspaces {
+    margin-left: 6px;
+}
+
+/* Workspace pills. Active mirrors sketchybar's space.sh highlight: the focused
+   space is filled with FG and its glyph drawn in the dark BG colour. Waybar
+   versions differ on the class name, so style both .active and .focused. */
 #workspaces button {
     padding: 0 8px;
-    margin: 2px 2px;
-    color: #cdd6f4;
-    background: transparent;
-    border-radius: 6px;
+    margin: 5px 2px;
+    color: @fg;
+    background: @bg_pill;
+    border-radius: 5px;
 }
 
-#workspaces button.active {
-    background: #585b70;
+#workspaces button.active,
+#workspaces button.focused {
+    background: @fg;
+    color: @bg_solid;
 }
 
 #window,
@@ -34,16 +61,12 @@ window#waybar {
     padding: 0 10px;
 }
 
-#clock {
-    font-weight: bold;
-}
-
 #temperature.critical,
 #network.disconnected,
 #pulseaudio.muted {
-    color: #f38ba8;
+    color: @red;
 }
 
 #custom-power {
-    color: #f38ba8;
+    color: @red;
 }
