@@ -38,12 +38,15 @@
     },
 
     "temperature": {
-        "format": "{temperatureC}°C",
+        // No icon, but an invisible xx-large glyph gives temp the same tall
+        // line-box as cpu/mem so the same rise centres it identically, instead
+        // of fighting the shorter natural line-box with a large negative rise.
+        "format": "<span size='xx-large' alpha='1%'>​</span><span rise='2500'>{temperatureC}°C</span>",
         "critical-threshold": 80
     },
 
     "pulseaudio": {
-        "format": "{icon} <span rise='2500'>{volume}%</span>",
+        "format": "{icon} <span rise='2100'>{volume}%</span>",
         "format-muted": "<span size='xx-large'>󰝟</span> <span rise='2500'>muted</span>",
         "format-icons": { "default": ["<span size='xx-large'>󰕿</span>", "<span size='xx-large'>󰖀</span>", "<span size='xx-large'>󰕾</span>"] },
         "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
