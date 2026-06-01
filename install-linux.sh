@@ -85,6 +85,15 @@ APT_PACKAGES=(
   fontconfig
   xz-utils
   swaybg          # wallpaper for the niri session (see niri/config.kdl)
+
+  # niri desktop — settings GUIs
+  pavucontrol     # audio mixer (incl. Pro-Audio profile)
+  blueman         # bluetooth manager
+  # nwg-displays  # NO niri support until upstream 0.4.0; apt ships 0.3.x (25.10: 0.3.20, 26.04: 0.3.26)
+                  # which exits "Neither sway nor Hyprland detected". Manage outputs in niri/config.kdl
+                  # (niri msg outputs -> output blocks) instead. Revisit if apt reaches >= 0.4.0.
+  nwg-look        # GTK theme / icons / cursor / fonts
+  # nm-connection-editor  # NetworkManager GUI — ships with the Ubuntu desktop install; uncomment for a minimal base
 )
 
 echo "The following apt packages will be installed:"
