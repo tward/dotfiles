@@ -106,6 +106,15 @@ input {
     position x=1280 y=0
 }
 
+// Dell U2725QE (4K, 120Hz capable). Its EDID-preferred mode is 60Hz, so niri defaults
+// to 60Hz — pin the 120Hz mode explicitly. scale 1.5 matches niri's DPI auto-guess
+// (logical size 2560x1440). "DP-4" is the current connector; for port-independence use
+// the monitor name instead: output "Dell Inc. DELL U2725QE GKZDB84" { ... }
+output "DP-4" {
+    mode "3840x2160@120.000"
+    scale 1.5
+}
+
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:
 // https://niri-wm.github.io/niri/Configuration:-Layout
