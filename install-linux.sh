@@ -84,6 +84,7 @@ APT_PACKAGES=(
   python3-venv
   fontconfig
   xz-utils
+  swaybg          # wallpaper for the niri session (see niri/config.kdl)
 )
 
 echo "The following apt packages will be installed:"
