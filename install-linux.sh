@@ -94,6 +94,13 @@ APT_PACKAGES=(
                   # (niri msg outputs -> output blocks) instead. Revisit if apt reaches >= 0.4.0.
   nwg-look        # GTK theme / icons / cursor / fonts
   # nm-connection-editor  # NetworkManager GUI — ships with the Ubuntu desktop install; uncomment for a minimal base
+
+  # niri desktop — session services (a full DE bundles these; we start them from
+  # niri/config.kdl). All Wayland-native and distro-portable.
+  swaylock        # screen locker (Super+Alt+L, and swayidle on idle/sleep)
+  swayidle        # idle daemon: auto-lock, DPMS off, lock-before-sleep
+  mako-notifier   # notification daemon (binary is "mako"); Debian/Ubuntu package name
+  mate-polkit     # graphical polkit agent for privileged-action auth dialogs
 )
 
 echo "The following apt packages will be installed:"

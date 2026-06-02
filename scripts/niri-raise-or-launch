@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+#
+# raise-or-launch — fuzzel --launch-prefix wrapper for the niri session.
+#
+# fuzzel runs this with the selected entry's argv appended (see --launch-prefix
+# in fuzzel(1)), so "$@" is the command fuzzel would otherwise exec directly.
+# This turns the plain launcher into raise-or-launch:
+#
+#   * Bare command with a matching window already open: focus that window via
+#     niri IPC instead of spawning a duplicate.
+#   * Chromium PWA (--app-id=<hash>): the hash is embedded in the live window's
+#     app_id (brave-<hash>-<profile>) and is unique, so raise-or-launch on it.
+#   * Anything else carrying args (a URL, --profile-directory, a file, or a PWA
+#     shortcut-menu entry): hand to the app, which routes it better than we can.
+#   * No match anywhere: launch it.
+#
+# Matching is a heuristic: fuzzel only hands us the resolved Exec line, not the
+# .desktop's StartupWMClass (which for PWAs doesn't even match the real Wayland
+# app_id), so we compare the binary's basename against open windows' app_id
+# (case-insensitive, substring either way). That covers the common drift, e.g.
+# brave-browser-stable -> "brave-browser" and thunderbird -> "thunderbird_thunderbird".
+#
+# Wired up in niri/config.kdl:
+#   Mod+Space { spawn-sh "fuzzel --launch-prefix=$HOME/.local/bin/niri-raise-or-launch"; }
+
+set -uo pipefail
+
+# Print the id of the most-recently-focused open window whose app_id matches the
+# candidate $1 under mode $2 (empty if none):
+#   basename  app_id == cand, or either is a substring of the other (loose).
+#   appid     app_id contains cand (a unique PWA hash; collision-free).
+focus_id() {
+  niri msg --json windows 2>/dev/null | jq -r --arg c "$1" --arg mode "$2" '
+    [ .[]
+      | select(.app_id != null)
+      | { id, ts: (.focus_timestamp.secs // 0), a: (.app_id | ascii_downcase) }
+      | (.a) as $a
+      | select(
+          if $mode == "appid"
+          then ($a | contains($c))
+          else ($a == $c or ($a | contains($c)) or ($c | contains($a)))
+          end ) ]
+    | sort_by(.ts) | last | .id // empty
+  ' 2>/dev/null
+}
+
+# Escape / nothing selected: fuzzel runs the prefix with no argv.
+[ "$#" -gt 0 ] || exit 0
+
+if [ "$#" -gt 1 ]; then
+  # Command carries args. Only Chromium PWAs expose a reliable per-window id.
+  appid=
+  for a in "$@"; do
+    case $a in --app-id=*) appid=${a#--app-id=} ;; esac
+  done
+  # Shortcut-menu entries (e.g. YouTube "Shorts") should navigate, not just
+  # focus — they carry --app-launch-url-for-shortcuts-menu-item.
+  if [ -n "$appid" ] && ! printf '%s\n' "$@" | grep -q 'app-launch-url-for-shortcuts'; then
+    id=$(focus_id "${appid,,}" appid) || id=
+    [ -n "$id" ] && exec niri msg action focus-window --id "$id"
+  fi
+  exec "$@"
+fi
+
+# Bare command: candidate app_id is the binary's basename, lowercased.
+cand=${1##*/}
+id=$(focus_id "${cand,,}" basename) || id=
+[ -n "$id" ] && exec niri msg action focus-window --id "$id"
+
+exec "$@"

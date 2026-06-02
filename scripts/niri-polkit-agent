@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# niri-polkit-agent — locate and exec the MATE polkit authentication agent.
+#
+# The agent binary lives in a libexec/lib dir whose path varies by distro, so a
+# hardcoded path in niri's spawn-at-startup would break on a distro switch:
+#   Fedora        /usr/libexec/polkit-mate-authentication-agent-1
+#   Arch          /usr/lib/mate-polkit/polkit-mate-authentication-agent-1
+#   Debian/Ubuntu /usr/lib/policykit-1-*/ or /usr/lib/mate-polkit/
+# Probe the common locations, then fall back to a search so it just works.
+
+set -u
+
+agent=polkit-mate-authentication-agent-1
+
+for p in \
+  "/usr/lib/mate-polkit/$agent" \
+  "/usr/libexec/$agent" \
+  "/usr/lib/policykit-1-mate/$agent" \
+  "/usr/lib/polkit-mate/$agent"; do
+  [ -x "$p" ] && exec "$p"
+done
+
+# Last resort: search the usual roots (first hit wins).
+found=$(find /usr/lib /usr/libexec -name "$agent" -type f 2>/dev/null | head -n1)
+[ -n "$found" ] && exec "$found"
+
+echo "niri-polkit-agent: $agent not found — is mate-polkit installed?" >&2
+exit 1
