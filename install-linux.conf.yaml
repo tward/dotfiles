@@ -14,7 +14,7 @@
     ~/.config/htop: htop
     ~/.config/kitty: kitty
     ~/.config/lazygit: lazygit
-    ~/.config/mako: mako
+    ~/.config/swaync: swaync
     ~/.config/niri: niri
     ~/.config/swaylock: swaylock
     ~/.config/nvim: neovim

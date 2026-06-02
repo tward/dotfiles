@@ -12,7 +12,7 @@
     "margin-right": 12,
 
     "modules-left": ["niri/workspaces", "niri/window"],
-    "modules-center": ["clock"],
+    "modules-center": ["custom/notification", "clock"],
     "modules-right": ["mpris", "cpu", "memory", "temperature", "pulseaudio", "network", "tray", "custom/power"],
 
     "niri/workspaces": { "format": "{index}" },
@@ -60,6 +60,29 @@
     },
 
     "tray": { "spacing": 8 },
+
+    // Notification bell: count/state from swaync, click toggles the center,
+    // right-click toggles Do-Not-Disturb. swaync replaces mako (see install-linux.sh).
+    "custom/notification": {
+        "tooltip": false,
+        "format": "{icon}",
+        "format-icons": {
+            "notification": "<span size='xx-large' foreground='#bf616a'>󰵙</span>",
+            "none": "<span size='xx-large'>󰂜</span>",
+            "dnd-notification": "<span size='xx-large' foreground='#bf616a'>󰂠</span>",
+            "dnd-none": "<span size='xx-large'>󰂠</span>",
+            "inhibited-notification": "<span size='xx-large' foreground='#bf616a'>󰵙</span>",
+            "inhibited-none": "<span size='xx-large'>󰂜</span>",
+            "dnd-inhibited-notification": "<span size='xx-large' foreground='#bf616a'>󰂠</span>",
+            "dnd-inhibited-none": "<span size='xx-large'>󰂠</span>"
+        },
+        "return-type": "json",
+        "exec-if": "which swaync-client",
+        "exec": "swaync-client -swb",
+        "on-click": "swaync-client -t -sw",
+        "on-click-right": "swaync-client -d -sw",
+        "escape": true
+    },
 
     "custom/power": {
         "format": "<span size='xx-large'>⏻</span>",

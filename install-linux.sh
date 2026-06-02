@@ -99,7 +99,7 @@ APT_PACKAGES=(
   # niri/config.kdl). All Wayland-native and distro-portable.
   swaylock        # screen locker (Super+Alt+L, and swayidle on idle/sleep)
   swayidle        # idle daemon: auto-lock, DPMS off, lock-before-sleep
-  mako-notifier   # notification daemon (binary is "mako"); Debian/Ubuntu package name
+  sway-notification-center  # notification daemon + center panel (binary is "swaync"); Debian/Ubuntu package name
   mate-polkit     # graphical polkit agent for privileged-action auth dialogs
 )
 
