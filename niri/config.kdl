@@ -429,9 +429,21 @@ window-rule {
 // is-floating=false excludes floating windows (e.g. Bitwig plugin editors) from
 // dimming: a focused plugin won't fade its sibling editors, and floating editors
 // stay bright when the main window has focus.
+//
+// background-effect adds x-ray blur behind the now-semitransparent unfocused
+// window: the 10% that shows through (opacity 0.9) reveals a blurred backdrop
+// rather than sharp content. xray true (also the auto-default once blur is on)
+// blurs the wallpaper once and reuses it, ignoring windows below — the cheap
+// path, and correct here since tiled columns don't overlap so there's only
+// wallpaper behind them anyway. border/focus-ring are both off, so neither
+// covers the effect. Requires niri 26.04+.
 window-rule {
     match is-active=false is-floating=false
     opacity 0.9
+    background-effect {
+        blur true
+        xray true
+    }
 }
 
 // --- Bitwig Studio (plugin host) --------------------------------------------
