@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#
+# brave-profile — fuzzel menu to open a Brave profile, read live from Brave's own
+# profile list. Because it reads Local State every run, it always reflects the
+# current set: rename / add / delete a profile in Brave and this needs no changes.
+# Bound to Mod+B in niri/config.kdl.
+#
+# Brave routes the launch itself: if the chosen profile already has a window it's
+# focused, otherwise a new one opens — so any number of profiles can be open at
+# once. (This is why the Mod+Space raise-or-launch wrapper must not touch
+# --profile-directory launches; see scripts/niri-raise-or-launch.)
+
+set -uo pipefail
+
+state="$HOME/.config/BraveSoftware/Brave-Browser/Local State"
+[ -r "$state" ] || exit 0
+
+# Resolve the Brave binary (name varies by distro/channel).
+brave=$(command -v brave-browser-stable || command -v brave-browser || command -v brave || true)
+[ -n "$brave" ] || exit 0
+
+# Pick a profile by its display name.
+name=$(jq -r '.profile.info_cache[].name' "$state" | sort | fuzzel --dmenu --prompt "Brave  ") || exit 0
+[ -n "$name" ] || exit 0
+
+# Map the chosen name back to its on-disk profile directory.
+dir=$(jq -r --arg n "$name" '.profile.info_cache | to_entries[] | select(.value.name == $n) | .key' "$state" | head -n1)
+[ -n "$dir" ] || exit 0
+
+exec "$brave" --profile-directory="$dir"

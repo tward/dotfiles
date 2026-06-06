@@ -259,6 +259,21 @@ layout {
         color "#0007"
     }
 
+    // Tab indicator for tabbed columns (Mod+W). Focus ring and border are both
+    // off, so the indicator has no active accent to inherit and washes out
+    // against the wallpaper. Give it an explicit Nord green, and only show it
+    // when a column actually has multiple tabs.
+    tab-indicator {
+        hide-when-single-tab
+        // Thick and full-height so it reads as a solid stripe. Positive gap keeps
+        // it in the gutter beside the window rather than overlapping content.
+        width 8
+        gap 4
+        length total-proportion=1.0
+        active-color "#a3be8c"
+        inactive-color "#505050"
+    }
+
     // Struts shrink the area occupied by windows, similarly to layer-shell panels.
     // You can think of them as a kind of outer gaps. They are set in logical pixels.
     // Left and right struts will cause the next window to the side to always be visible.
@@ -290,6 +305,22 @@ spawn-sh-at-startup "swaybg -i $HOME/Pictures/wallpaper.png -m fill"
 
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
+
+// --- Session services -------------------------------------------------------
+// A full desktop (GNOME/Plasma) bundles these; the standalone niri session has
+// to start them itself. All Wayland-native and distro-agnostic; the packages
+// (sway-notification-center, mate-polkit, swaylock, swayidle) are in install-linux.sh.
+//
+// Notification daemon + center (binary is "swaync"; apt package sway-notification-center):
+spawn-at-startup "swaync"
+// Polkit authentication agent — renders the auth dialog for privileged actions
+// (mounting disks, nm-connection-editor, ...). The agent's path varies by distro,
+// so a launcher probes for it. See scripts/niri-polkit-agent.
+spawn-sh-at-startup "$HOME/.local/bin/niri-polkit-agent"
+// Idle: lock after 5 min, power off monitors 30s later (DPMS via niri), and lock
+// before sleep so the session is never unlocked on resume. -w serializes the
+// lock so resume can't race ahead of it.
+spawn-sh-at-startup "swayidle -w timeout 300 'swaylock -f' timeout 330 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'swaylock -f'"
 
 hotkey-overlay {
     // Uncomment this line to disable the "Important Hotkeys" pop-up at startup.
@@ -389,8 +420,14 @@ binds {
 
     // Suggested binds for running programs: terminal, app launcher, screen locker.
     Mod+T hotkey-overlay-title="Open a Terminal: kitty" { spawn "kitty"; }
-    Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
+    // Raise-or-launch: if a window of the selected app is already open, focus it
+    // (via niri IPC) instead of spawning a duplicate. See scripts/niri-raise-or-launch.
+    // spawn-sh so $HOME expands to an absolute path (plain spawn does not).
+    Mod+Space hotkey-overlay-title="Run an Application: fuzzel" { spawn-sh "fuzzel --launch-prefix=$HOME/.local/bin/niri-raise-or-launch"; }
     Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "swaylock"; }
+    // Pick a Brave profile from a fuzzel menu built live from Brave's profile list
+    // (rename/add/delete-proof). See scripts/brave-profile.
+    Mod+B hotkey-overlay-title="Open a Brave profile: brave-profile" { spawn-sh "$HOME/.local/bin/brave-profile"; }
 
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
     // Note: the entire command goes as a single argument. It's passed verbatim to `sh -c`.
@@ -401,8 +438,8 @@ binds {
     // The allow-when-locked=true property makes them work even when the session is locked.
     // Using spawn-sh allows to pass multiple arguments together with the command.
     // "-l 1.0" limits the volume to 100%.
-    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1+ -l 1.0"; }
-    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1-"; }
+    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ -l 1.0"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05-"; }
     XF86AudioMute        allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
     XF86AudioMicMute     allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
 
@@ -423,6 +460,9 @@ binds {
     // You can also move the mouse into the top-left hot corner,
     // or do a four-finger swipe up on a touchpad.
     Mod+O repeat=false { toggle-overview; }
+    // Keychron Q1 Max (Mac layout): plain F3 (Mission Control key) sends
+    // XF86LaunchA. Bound here to match macOS Mission Control = niri overview.
+    XF86LaunchA repeat=false { toggle-overview; }
 
     Mod+Q repeat=false { close-window; }
 

@@ -26,6 +26,7 @@
     ~/.config/zsh: zsh
     ~/.local/bin/niri-raise-or-launch: scripts/niri-raise-or-launch
     ~/.local/bin/niri-polkit-agent: scripts/niri-polkit-agent
+    ~/.local/bin/brave-profile: scripts/brave-profile
 
 - shell:
     - ["test -d ~/.config/tmux/plugins/tpm || git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm", Installing TPM]
