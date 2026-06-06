@@ -86,6 +86,13 @@ APT_PACKAGES=(
   xz-utils
   swaybg          # wallpaper for the niri session (see niri/config.kdl)
 
+  # niri desktop — bar & now-playing. Configs live in the repo (waybar/,
+  # niri/config.kdl), so the packages those configs drive belong here too,
+  # mirroring the macOS yabai/sketchybar stack in homebrew/Brewfile. niri itself is
+  # PPA-only and installed below; these two are in the Ubuntu archive.
+  waybar          # status bar (waybar/config.jsonc); pulls in libplayerctl2
+  playerctl       # niri media keys + waybar now-playing (provides playerctld)
+
   # niri desktop — settings GUIs
   pavucontrol     # audio mixer (incl. Pro-Audio profile)
   blueman         # bluetooth manager
@@ -107,6 +114,7 @@ echo "The following apt packages will be installed:"
 printf '  %s\n' "${APT_PACKAGES[@]}"
 echo ""
 echo "The following PPAs will be added:"
+echo "  ppa:avengemedia/danklinux (niri + xwayland-satellite)"
 echo "  ppa:neovim-ppa/unstable (neovim 0.11+)"
 echo ""
 echo "The following will be installed from external sources:"
@@ -208,6 +216,17 @@ else
     fc-cache -f "$HOME/.local/share/fonts"
   '
 fi
+
+# --- niri compositor via danklinux PPA ---
+# niri is the Wayland compositor the whole desktop is built around (niri/config.kdl).
+# Not in the Ubuntu archive; the danklinux PPA packages it. niri Depends on
+# xwayland-satellite, so the X11/XWayland bridge (for Bitwig, Discord, etc.) comes in
+# automatically. waybar/playerctl/swaync are installed above from the archive.
+echo ""
+echo "==> Installing niri via danklinux PPA..."
+add-apt-repository -y ppa:avengemedia/danklinux
+apt update
+apt install -y niri
 
 # --- Neovim via PPA ---
 echo ""
