@@ -353,6 +353,14 @@ animations {
     // slowdown 3.0
 }
 
+// Persistent workspace dedicated to Bitwig Studio (see the Bitwig window rules
+// below). Declaring it here makes it always exist so the main window can be
+// pinned to it via open-on-workspace. Note: a named workspace takes a leading
+// index slot on its monitor, so Mod+1 may now land here; pin it elsewhere with a
+// `workspace "daw" { open-on-output "DP-4" }` block if that's not what you want.
+workspace "core"
+workspace "daw"
+
 // Window rules let you adjust behavior for individual windows.
 // Find more information on the wiki:
 // https://niri-wm.github.io/niri/Configuration:-Window-Rules
@@ -398,9 +406,50 @@ window-rule {
 // Dim unfocused windows instead of drawing a focus ring (focus-ring is off
 // above). The active window stays fully opaque; everything else fades back.
 // With a single window nothing is inactive, so nothing dims.
+// is-floating=false excludes floating windows (e.g. Bitwig plugin editors) from
+// dimming: a focused plugin won't fade its sibling editors, and floating editors
+// stay bright when the main window has focus.
 window-rule {
-    match is-active=false
-    opacity 0.8
+    match is-active=false is-floating=false
+    opacity 0.9
+}
+
+// --- Bitwig Studio (plugin host) --------------------------------------------
+// Bitwig hosts arbitrary plugin (VST/CLAP) editor windows. Those editors expose
+// no app-id and no title, so they can't be matched directly (niri can't match an
+// unset app-id, nor match on PID). Strategy: pin the matchable MAIN window to its
+// own workspace and maximize it; float everything that has neither an app-id nor
+// a title (the plugin editors) so they don't tile and break the scrolling layout.
+
+// Main window: own workspace, maximized (= permanent Mod+F), and kept fully
+// opaque even when a plugin editor steals focus. The opacity override must come
+// after the dim rule above to win.
+window-rule {
+    match app-id=r#"^com\.bitwig\.BitwigStudio$"#
+    open-on-workspace "daw"
+    open-maximized true
+    opacity 1.0
+}
+
+// Plugin editor windows: float them. No `match` line means this matches every
+// window; the excludes carve out anything that HAS an app-id or a title, leaving
+// only the app-id-less, title-less plugin editors. open-floating applies at map
+// time (when the window first opens).
+window-rule {
+    exclude app-id=r#".+"#
+    exclude title=r#".+"#
+    open-floating true
+    // Strip per-frame compositor effects for these windows. The plugin UI is
+    // CPU-rendered by JUCE (no GPU path on Linux by default), so every redraw is
+    // already expensive during a live resize — don't make niri also recompute a
+    // shadow blur and a rounded-corner clip each frame. These override the global
+    // `shadow on` (layout block) and the global rounded-corner rule for plugin
+    // editors only; every other window keeps the effects.
+    shadow {
+        off
+    }
+    geometry-corner-radius 0
+    clip-to-geometry false
 }
 
 binds {
@@ -465,6 +514,11 @@ binds {
     XF86LaunchA repeat=false { toggle-overview; }
 
     Mod+Q repeat=false { close-window; }
+    // Mod+Q only closes a window; GUI Flatpaks like Bitwig keep their processes
+    // (JVM, separate audio engine — 8+ GB) resident afterwards. This opens a
+    // fuzzel picker of every running Flatpak and sends the chosen one SIGTERM for
+    // a real, RAM-reclaiming quit. spawn-sh so $HOME expands to the script path.
+    Mod+Shift+Q repeat=false hotkey-overlay-title="Kill a running Flatpak (fuzzel)" { spawn-sh "$HOME/.local/bin/flatpak-kill-menu"; }
 
     Mod+Left  { focus-column-left; }
     Mod+Down  { focus-window-down; }

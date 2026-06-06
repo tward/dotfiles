@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+#
+# flatpak-kill-menu — fuzzel picker listing every running Flatpak instance. The
+# chosen instance is sent SIGTERM (flatpak kill's default) for a graceful,
+# RAM-reclaiming quit. Reads `flatpak ps` live each run, so the list always
+# reflects what's actually running. Bound to Mod+Shift+Q in niri/config.kdl.
+#
+# Why this exists: niri's close-window (Mod+Q) only closes a window; GUI Flatpaks
+# like Bitwig keep their processes (JVM, separate audio engine — 8+ GB) resident
+# afterwards. This gives a real quit for any of them.
+#
+# The menu shows each app's friendly name + ID; the selection maps back to the
+# precise instance ID (--accept-nth), so one of several instances of the same
+# app can be killed individually.
+
+set -uo pipefail
+
+# application-id -> friendly name, fetched once (not once per running instance).
+declare -A names
+while IFS=$'\t' read -r app name; do
+    [ -n "$app" ] && names[$app]=$name
+done < <(flatpak list --app --columns=application,name 2>/dev/null)
+
+# Build menu lines as "<display>\t<instance-id>". fuzzel shows column 1
+# (--with-nth) and returns column 2 (--accept-nth) on selection.
+lines=()
+while IFS=$'\t' read -r inst app pid; do
+    [ -n "$inst" ] || continue
+    label=${names[$app]:-$app}
+    lines+=("${label}  ·  ${app}  (pid ${pid})"$'\t'"${inst}")
+done < <(flatpak ps --columns=instance,application,pid 2>/dev/null)
+
+if [ "${#lines[@]}" -eq 0 ]; then
+    command -v notify-send >/dev/null && notify-send "Flatpak" "No running Flatpaks"
+    exit 0
+fi
+
+inst=$(printf '%s\n' "${lines[@]}" |
+    fuzzel --dmenu --with-nth=1 --accept-nth=2 --prompt "Kill Flatpak  ") || exit 0
+[ -n "$inst" ] || exit 0
+
+exec flatpak kill "$inst"

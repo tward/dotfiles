@@ -15,7 +15,7 @@
     "modules-center": ["custom/notification", "clock"],
     "modules-right": ["mpris", "cpu", "memory", "temperature", "pulseaudio", "network", "tray", "custom/power"],
 
-    "niri/workspaces": { "format": "{index}" },
+    "niri/workspaces": { "format": "{value}" },
     "niri/window": { "format": "{title}", "max-length": 60 },
 
     "clock": {
