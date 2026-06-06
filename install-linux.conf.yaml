@@ -16,6 +16,7 @@
     ~/.config/lazygit: lazygit
     ~/.config/swaync: swaync
     ~/.config/niri: niri
+    ~/.config/fuzzel: fuzzel
     ~/.config/swaylock: swaylock
     ~/.config/nvim: neovim
     ~/.config/ranger: ranger

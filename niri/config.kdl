@@ -359,6 +359,8 @@ animations {
 // index slot on its monitor, so Mod+1 may now land here; pin it elsewhere with a
 // `workspace "daw" { open-on-output "DP-4" }` block if that's not what you want.
 workspace "core"
+workspace "coms"
+workspace "ops"
 workspace "daw"
 
 // Window rules let you adjust behavior for individual windows.
@@ -450,6 +452,31 @@ window-rule {
     }
     geometry-corner-radius 0
     clip-to-geometry false
+}
+
+// Layer rules apply to layer-shell surfaces (bars, launchers, lock screens)
+// rather than regular windows. https://niri-wm.github.io/niri/Configuration:-Layer-Rules
+
+// fuzzel launcher (Mod+Space): blur whatever is behind its translucent panel.
+// fuzzel is a layer-shell surface (namespace "launcher"), so the blur goes on a
+// layer-rule, not a window-rule. The panel must stay semitransparent (background
+// alpha < ff in fuzzel/fuzzel.ini) or the opaque surface hides the blur.
+// geometry-corner-radius matches fuzzel's border radius=12 so the blurred
+// backdrop is clipped to the rounded corners.
+//
+// xray false forces "normal" blur: niri samples the live pixels behind the
+// panel each frame, so the windows underneath show through blurred. The default
+// (xray true, auto-enabled by blur) instead blurs the wallpaper once and reuses
+// that static image — cheaper, but it always shows the desktop background rather
+// than the windows below. Normal blur costs more per frame, fine for a launcher
+// that's only open briefly. Requires niri 26.04+.
+layer-rule {
+    match namespace="^launcher$"
+    geometry-corner-radius 12
+    background-effect {
+        blur true
+        xray false
+    }
 }
 
 binds {

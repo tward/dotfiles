@@ -92,6 +92,7 @@ APT_PACKAGES=(
   # PPA-only and installed below; these two are in the Ubuntu archive.
   waybar          # status bar (waybar/config.jsonc); pulls in libplayerctl2
   playerctl       # niri media keys + waybar now-playing (provides playerctld)
+  fuzzel          # app launcher (Mod+Space in niri/config.kdl); themed via fuzzel/
 
   # niri desktop — settings GUIs
   pavucontrol     # audio mixer (incl. Pro-Audio profile)
