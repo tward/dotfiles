@@ -22,6 +22,8 @@ if [[ "${1:-}" == "--uninstall" ]]; then
 
   rm -f "${REAL_HOME}/.local/share/applications/kitty.desktop"
   rm -f "${REAL_HOME}/.local/share/applications/kitty-open.desktop"
+  rm -f "${REAL_HOME}/.local/bin/yt-dlp"
+  rm -f "${REAL_HOME}/.local/bin/niri-float-sticky"
 
   # Unmask the waybar service if we masked it (symlink to /dev/null).
   WAYBAR_MASK="${REAL_HOME}/.config/systemd/user/waybar.service"
@@ -84,6 +86,9 @@ APT_PACKAGES=(
   python3-venv
   fontconfig
   xz-utils
+  mpv             # media player; plays YouTube URLs via yt-dlp, floated by a niri window-rule
+  mpv-mpris       # MPRIS plugin (auto-loads from /etc/mpv/scripts) so playerctld/waybar/media keys sense mpv
+  wl-clipboard    # wl-paste/wl-copy; used by the Mod+Y "play clipboard URL in mpv" niri bind
   swaybg          # wallpaper for the niri session (see niri/config.kdl)
 
   # niri desktop — bar & now-playing. Configs live in the repo (waybar/,
@@ -123,6 +128,8 @@ echo "  kitty (official installer)"
 echo "  Hack Nerd Font + Symbols-Only Nerd Font (~/.local/share/fonts)"
 echo "  lazygit (GitHub release)"
 echo "  diff-so-fancy (GitHub release)"
+echo "  yt-dlp (GitHub release → ~/.local/bin)"
+echo "  niri-float-sticky (built from Go source → ~/.local/bin)"
 echo ""
 read -p "Proceed? [y/N] " answer
 [[ "$answer" =~ ^[Yy]$ ]] || exit 0
@@ -262,6 +269,71 @@ if [[ -n "$LAZYGIT_ARCH" ]]; then
     echo "  Installed diff-so-fancy"
   else
     echo "WARNING: Failed to download diff-so-fancy. Skipping."
+  fi
+fi
+
+# --- yt-dlp to ~/.local/bin ---
+# User-local (not /usr/local/bin like lazygit) so `yt-dlp -U` can self-update the
+# binary in place without sudo. YouTube changes break stale yt-dlp often, so
+# in-place self-update matters. Arch-independent: the released `yt-dlp` is a
+# python zipapp (python3 is in APT_PACKAGES), so no LAZYGIT_ARCH gate is needed.
+# REAL_HOME is set above in the Kitty section.
+echo ""
+echo "==> Installing yt-dlp..."
+if curl -fLo "$TMPDIR/yt-dlp" "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"; then
+  sudo -u "${SUDO_USER:-$USER}" mkdir -p "${REAL_HOME}/.local/bin"
+  cp "$TMPDIR/yt-dlp" "${REAL_HOME}/.local/bin/yt-dlp"
+  chmod 0755 "${REAL_HOME}/.local/bin/yt-dlp"
+  chown "${SUDO_USER:-$USER}:" "${REAL_HOME}/.local/bin/yt-dlp"
+  echo "  Installed yt-dlp to ~/.local/bin (run 'yt-dlp -U' to update)"
+else
+  echo "WARNING: Failed to download yt-dlp. Skipping."
+fi
+
+# --- niri-float-sticky (built from Go source) ---
+# Sticky / "show on all workspaces" floating windows for niri, which has no native
+# support (tracked upstream in niri#932). Used to pin the mpv float as a follow-me
+# PiP — see the spawn-sh-at-startup line and Mod+P toggle in niri/config.kdl.
+#
+# No prebuilt binaries exist and Go is NOT a system dependency, so build with a
+# THROWAWAY toolchain: download Go into $TMPDIR (auto-removed by the EXIT trap),
+# build the pinned tag straight into the user's ~/.local/bin, and leave no Go on
+# the system. Guarded on the binary already existing — delete it to rebuild/upgrade.
+NFS_VERSION="v0.0.8"
+GO_VERSION="1.23.7"
+NFS_BIN="${REAL_HOME}/.local/bin/niri-float-sticky"
+echo ""
+echo "==> Installing niri-float-sticky ${NFS_VERSION}..."
+if [[ -x "$NFS_BIN" ]]; then
+  echo "  Already installed at ~/.local/bin/niri-float-sticky (rm it to rebuild)."
+else
+  case "$ARCH" in
+    x86_64)  GO_ARCH="amd64" ;;
+    aarch64) GO_ARCH="arm64" ;;
+    *)       GO_ARCH="" ;;
+  esac
+  if [[ -z "$GO_ARCH" ]]; then
+    echo "WARNING: Unsupported architecture $ARCH for the Go toolchain. Skipping niri-float-sticky."
+  elif curl -fLo "$TMPDIR/go.tar.gz" "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"; then
+    tar -C "$TMPDIR" -xzf "$TMPDIR/go.tar.gz"   # extracts to $TMPDIR/go (throwaway GOROOT)
+    chmod 755 "$TMPDIR"                          # let the build user traverse in to reach GOROOT
+    install -d -o "${SUDO_USER:-$USER}" "$TMPDIR/gopath" "$TMPDIR/gocache"
+    sudo -u "${SUDO_USER:-$USER}" mkdir -p "${REAL_HOME}/.local/bin"
+    # Build as the invoking user so the binary + module cache are user-owned. GOPATH
+    # and GOCACHE live in $TMPDIR and vanish with it; GOBIN drops the binary in place.
+    if sudo -u "${SUDO_USER:-$USER}" env \
+         HOME="${REAL_HOME}" \
+         GOROOT="$TMPDIR/go" \
+         GOPATH="$TMPDIR/gopath" \
+         GOCACHE="$TMPDIR/gocache" \
+         GOBIN="${REAL_HOME}/.local/bin" \
+         "$TMPDIR/go/bin/go" install "github.com/probeldev/niri-float-sticky@${NFS_VERSION}"; then
+      echo "  Installed niri-float-sticky to ~/.local/bin"
+    else
+      echo "WARNING: Failed to build niri-float-sticky. Skipping."
+    fi
+  else
+    echo "WARNING: Failed to download the Go toolchain. Skipping niri-float-sticky."
   fi
 fi
 

@@ -322,6 +322,13 @@ spawn-sh-at-startup "$HOME/.local/bin/niri-polkit-agent"
 // lock so resume can't race ahead of it.
 spawn-sh-at-startup "swayidle -w timeout 300 'swaylock -f' timeout 330 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'swaylock -f'"
 
+// Sticky-floating daemon: lets a floating window follow you across workspaces
+// (niri has no native sticky — niri#932). Started with -disable-auto-stick so
+// NOTHING is sticky by default; toggle the focused float on demand with Mod+P
+// (see binds). Built to ~/.local/bin by install-linux.sh. spawn-sh so $HOME
+// expands; niri exports $NIRI_SOCKET into spawned children, which the daemon needs.
+spawn-sh-at-startup "$HOME/.local/bin/niri-float-sticky -disable-auto-stick"
+
 hotkey-overlay {
     // Uncomment this line to disable the "Important Hotkeys" pop-up at startup.
     // skip-at-startup
@@ -384,6 +391,17 @@ window-rule {
     // - Flatpak Firefox (app-id is "org.mozilla.firefox")
     match app-id=r#"firefox$"# title="^Picture-in-Picture$"
     open-floating true
+}
+
+// Open mpv as a small floating player by default — Path-B "PiP" for YouTube:
+// `mpv <url>` (mpv shells out to yt-dlp, installed to ~/.local/bin). Floats a
+// 480x270 corner window instead of tiling into the scroll layout or opening at
+// full video resolution.
+window-rule {
+    match app-id=r#"^mpv$"#
+    open-floating true
+    default-column-width { fixed 480; }
+    default-window-height { fixed 270; }
 }
 
 // Example: block out two password managers from screen capture.
@@ -504,6 +522,19 @@ binds {
     // Pick a Brave profile from a fuzzel menu built live from Brave's profile list
     // (rename/add/delete-proof). See scripts/brave-profile.
     Mod+B hotkey-overlay-title="Open a Brave profile: brave-profile" { spawn-sh "$HOME/.local/bin/brave-profile"; }
+    // Pin/unpin the focused floating window so it follows you across workspaces
+    // (e.g. the mpv PiP). Calls niri-float-sticky's IPC client; the daemon itself is
+    // started via spawn-sh-at-startup above. spawn-sh so $HOME expands.
+    Mod+P hotkey-overlay-title="Pin window across workspaces: niri-float-sticky" { spawn-sh "$HOME/.local/bin/niri-float-sticky -ipc toggle_sticky"; }
+    // Play whatever URL/path is on the clipboard in mpv (floats via the mpv window
+    // rule below) — copy a video link, press Mod+Y, watch in the PiP. wl-paste -n
+    // strips the trailing newline; the inner quotes keep the clipboard as a single
+    // argument, so it's never re-parsed as a shell command. Needs wl-clipboard.
+    // ytdl_hook-ytdl_path points mpv at yt-dlp by ABSOLUTE path: niri-spawned procs
+    // don't get ~/.local/bin on PATH (hence the $HOME/.local/bin/... paths elsewhere),
+    // so mpv's default bare-name yt-dlp lookup fails and YouTube URLs never resolve.
+    // $HOME is shell-expanded by spawn-sh (mpv itself won't expand ~ for this opt).
+    Mod+Y hotkey-overlay-title="Play clipboard URL in mpv" { spawn-sh "mpv --script-opts=ytdl_hook-ytdl_path=$HOME/.local/bin/yt-dlp \"$(wl-paste -n)\""; }
 
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
     // Note: the entire command goes as a single argument. It's passed verbatim to `sh -c`.
