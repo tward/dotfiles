@@ -5,8 +5,8 @@
   "layer": "overlay",
   "control-center-layer": "top",
   "cssPriority": "user",
-  "control-center-width": 380,
-  "control-center-height": 600,
+  "control-center-width": 420,
+  "control-center-height": 780,
   "control-center-margin-top": 8,
   "control-center-margin-right": 12,
   "control-center-margin-bottom": 8,
@@ -20,7 +20,18 @@
   "transition-time": 200,
   "hide-on-clear": true,
   "hide-on-action": true,
-  "widgets": ["title", "dnd", "notifications"],
+  "widgets": [
+    "title",
+    "dnd",
+    "mpris",
+    "volume",
+    "backlight",
+    "buttons-grid",
+    "menubar",
+    "label",
+    "inhibitors",
+    "notifications"
+  ],
   "widget-config": {
     "title": {
       "text": "Notifications",
@@ -29,6 +40,62 @@
     },
     "dnd": {
       "text": "Do Not Disturb"
+    },
+    "label": {
+      "text": "label widget — static custom text",
+      "max-lines": 3
+    },
+    "mpris": {
+      "image-size": 96,
+      "image-radius": 8,
+      "blacklist": ["playerctld"]
+    },
+    "volume": {
+      "label": "Volume",
+      "show-per-app": true,
+      "show-per-app-label": true
+    },
+    "backlight": {
+      "label": "Brightness",
+      "device": "intel_backlight"
+    },
+    "buttons-grid": {
+      "actions": [
+        {
+          "label": "󰖩  Wi-Fi",
+          "type": "toggle",
+          "active": true,
+          "command": "bash -c '[[ $SWAYNC_TOGGLE_STATE == true ]] && nmcli radio wifi on || nmcli radio wifi off'",
+          "update-command": "bash -c '[[ $(nmcli radio wifi) == enabled ]] && echo true || echo false'"
+        },
+        {
+          "label": "󰂯  Bluetooth",
+          "type": "toggle",
+          "command": "bash -c '[[ $SWAYNC_TOGGLE_STATE == true ]] && /usr/sbin/rfkill unblock bluetooth || /usr/sbin/rfkill block bluetooth'",
+          "update-command": "bash -c 'for d in /sys/class/rfkill/*; do [ $(cat $d/type) = bluetooth ] && { [ $(cat $d/soft) = 0 ] && echo true || echo false; }; done'"
+        }
+      ]
+    },
+    "menubar": {
+      "menu#power": {
+        "label": "Power",
+        "position": "right",
+        "actions": [
+          {
+            "label": "Lock",
+            "command": "loginctl lock-session"
+          },
+          {
+            "label": "Suspend",
+            "command": "systemctl suspend"
+          }
+        ]
+      }
+    },
+    "inhibitors": {
+      "text": "Inhibitors",
+      "clear-all-button": true,
+      "button-text": "Clear All"
     }
   }
 }

@@ -58,3 +58,113 @@
   border-radius: 100px;
 }
 .widget-dnd > switch:checked { background: #88c0d0; }
+
+/* ── Label ── */
+.widget-label { margin: 8px 12px; }
+.widget-label > label { color: #d8dee9; font-size: 13px; }
+
+/* ── MPRIS media player (only renders when a player is active) ── */
+.widget-mpris { margin: 6px 8px; }
+.widget-mpris .widget-mpris-player {
+  padding: 12px;
+  margin: 6px 8px;
+  background: #3b4252;
+  border: 1px solid #434c5e;
+  border-radius: 10px;
+}
+.widget-mpris .widget-mpris-album-art { border-radius: 8px; }
+.widget-mpris .widget-mpris-title { color: #eceff4; font-weight: bold; }
+.widget-mpris .widget-mpris-subtitle { color: #81a1c1; }
+.widget-mpris button { color: #eceff4; background: transparent; border: none; }
+.widget-mpris button:hover { background: #434c5e; border-radius: 6px; }
+
+/* ── Sliders: volume + backlight ── */
+.widget-volume,
+.widget-backlight {
+  background: #3b4252;
+  border: 1px solid #434c5e;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin: 8px 12px;
+  color: #eceff4;
+}
+.widget-volume > box > button,
+.widget-backlight > box > button { background: transparent; border: none; color: #eceff4; }
+.widget-volume trough,
+.widget-backlight trough { background: #4c566a; border-radius: 100px; min-height: 8px; }
+.widget-volume highlight,
+.widget-backlight highlight { background: #88c0d0; border-radius: 100px; }
+.widget-volume slider,
+.widget-backlight slider {
+  background: #eceff4;
+  border-radius: 100%;
+  min-width: 14px;
+  min-height: 14px;
+}
+.per-app-volume {
+  background: #2e3440;
+  border-radius: 8px;
+  padding: 4px 8px 8px 8px;
+  margin: 0 4px 4px 4px;
+}
+
+/* ── Buttons grid ── */
+.widget-buttons-grid {
+  padding: 8px;
+  margin: 8px 12px;
+  background: #3b4252;
+  border: 1px solid #434c5e;
+  border-radius: 10px;
+}
+/* Inactive / off: muted with a visible border so it reads as a pressable control */
+.widget-buttons-grid > flowbox > flowboxchild > button {
+  background: #3b4252;
+  color: #d8dee9;
+  border: 1px solid #4c566a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 4px;
+}
+.widget-buttons-grid > flowbox > flowboxchild > button:hover { background: #4c566a; }
+/* Active / on: solid Nord green, dark bold text.
+   swaync's toggle is a plain Gtk.ToggleButton with no .toggle class —
+   the active state is just GTK's :checked pseudo (the reference styleOG.css
+   selector `button.toggle:checked` is dead and never matches). */
+.widget-buttons-grid > flowbox > flowboxchild > button:checked {
+  background: #a3be8c;
+  border-color: #a3be8c;
+  color: #2e3440;
+  font-weight: bold;
+}
+
+/* ── Menubar (the dropdown content uses the class named after '#', e.g. #power → .power) ── */
+.widget-menubar { margin: 8px 12px; }
+.widget-menubar > box > .menu-button-bar > button {
+  background: #434c5e;
+  color: #eceff4;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin: 2px 4px;
+}
+.widget-menubar > box > .menu-button-bar > button:hover { background: #4c566a; }
+.power {
+  background: #3b4252;
+  border: 1px solid #434c5e;
+  border-radius: 10px;
+  margin: 4px;
+  padding: 4px;
+}
+.power > button { background: transparent; border: none; color: #eceff4; padding: 6px 10px; }
+.power > button:hover { background: #434c5e; border-radius: 6px; }
+
+/* ── Inhibitors ── */
+.widget-inhibitors { margin: 8px 12px; color: #eceff4; }
+.widget-inhibitors > button {
+  background: #434c5e;
+  color: #eceff4;
+  border: 1px solid #434c5e;
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+.widget-inhibitors > button:hover { background: #4c566a; }
