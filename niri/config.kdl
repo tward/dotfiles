@@ -484,6 +484,41 @@ window-rule {
     clip-to-geometry false
 }
 
+// --- Workspace assignments --------------------------------------------------
+// Pin specific apps to named workspaces (declared above) so they always open in
+// the same place. open-on-workspace applies at MAP time (when a window first
+// opens), so already-running windows aren't pulled back — only newly opened ones
+// land here. Multiple `match` lines in one rule act as OR. app-ids were captured
+// from `niri msg windows`.
+
+// Communications → "coms": Slack, Discord, Thunderbird.
+window-rule {
+    match app-id=r#"^slack$"#
+    match app-id=r#"^discord$"#
+    match app-id=r#"^thunderbird_thunderbird$"#
+    open-on-workspace "coms"
+}
+
+// Core tools → "core": GitKraken, Obsidian.
+window-rule {
+    match app-id=r#"^gitkraken$"#
+    match app-id=r#"^obsidian$"#
+    open-on-workspace "core"
+}
+
+// Web apps → "ops": Vercel + Supabase Studio (Brave PWAs).
+// Matched on the PWA app-id HASH only, not the full app_id: the live app_id is
+// brave-<hash>-<profile> (e.g. ...-Profile_1). The hash is the stable,
+// collision-free part (the same convention niri-raise-or-launch relies on), so
+// anchoring ^brave-<hash> survives the PWA opening under a different Brave profile.
+window-rule {
+    // Vercel
+    match app-id=r#"^brave-kjadmedhkblcgnokefifbpcmdjagkefo"#
+    // Supabase Studio
+    match app-id=r#"^brave-ghjmbgleacbfjnbmindaeipamojehijb"#
+    open-on-workspace "ops"
+}
+
 // Layer rules apply to layer-shell surfaces (bars, launchers, lock screens)
 // rather than regular windows. https://niri-wm.github.io/niri/Configuration:-Layer-Rules
 
