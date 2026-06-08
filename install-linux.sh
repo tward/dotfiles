@@ -32,6 +32,13 @@ if [[ "${1:-}" == "--uninstall" ]]; then
     echo "==> Unmasked waybar.service"
   fi
 
+  # Unmask the swaync service if we masked it (symlink to /dev/null).
+  SWAYNC_MASK="${REAL_HOME}/.config/systemd/user/swaync.service"
+  if [[ -L "$SWAYNC_MASK" ]] && [[ "$(readlink "$SWAYNC_MASK")" == /dev/null ]]; then
+    rm -f "$SWAYNC_MASK"
+    echo "==> Unmasked swaync.service"
+  fi
+
   NERD_FONT_DIR="${REAL_HOME}/.local/share/fonts/NerdFonts"
   if [[ -d "$NERD_FONT_DIR" ]]; then
     echo "==> Removing Nerd Fonts..."
@@ -353,6 +360,31 @@ if [[ -e /usr/lib/systemd/user/waybar.service ]] || [[ -e /etc/systemd/user/wayb
   echo "  Masked waybar.service (waybar starts from niri config only)."
 else
   echo "  No packaged waybar.service found; nothing to mask."
+fi
+
+# --- Mask packaged swaync service ---
+# The sway-notification-center apt package ships a systemd user service enabled
+# by default (WantedBy=graphical-session.target) with Restart=on-failure. It
+# races niri's own spawn-at-startup: at login systemd starts swaync before the
+# compositor's layer-shell is ready, the daemon exits 1, and Restart=on-failure
+# respawns it in a tight loop. Whichever instance wins the
+# org.freedesktop.Notifications bus name serves the whole session — when a
+# half-initialised one wins, notifications still reach the control center (and
+# apps still play their own sound) but no popups ever draw. It would also launch
+# swaync under GNOME. We start swaync only from niri's config, so mask the
+# service (this also stops D-Bus activation, which routes via SystemdService=).
+# A user-scope disable does not stick because the package enables it in global
+# scope.
+echo ""
+echo "==> Masking packaged swaync systemd service..."
+if [[ -e /usr/lib/systemd/user/swaync.service ]] || [[ -e /etc/systemd/user/swaync.service ]]; then
+  REAL_HOME=$(getent passwd "${SUDO_USER:-$USER}" | cut -d: -f6)
+  MASK_DIR="${REAL_HOME}/.config/systemd/user"
+  sudo -u "${SUDO_USER:-$USER}" mkdir -p "$MASK_DIR"
+  sudo -u "${SUDO_USER:-$USER}" ln -sf /dev/null "${MASK_DIR}/swaync.service"
+  echo "  Masked swaync.service (swaync starts from niri config only)."
+else
+  echo "  No packaged swaync.service found; nothing to mask."
 fi
 
 # --- Set default shell ---
