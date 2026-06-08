@@ -4,123 +4,82 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-This is a comprehensive macOS development environment dotfiles repository focused on productivity tools and workflows. The setup includes window management (Yabai), terminal emulation (Kitty), multiplexing (Tmux), text editing (Neovim), and shell configuration (ZSH).
+Cross-platform development-environment dotfiles for **macOS** and **Linux (Wayland/niri)**. The same repo drives both: a macOS stack built around the yabai window manager and a Linux stack built around the niri compositor, sharing a common core of terminal (Kitty), multiplexer (Tmux), editor (Neovim), shell (ZSH), and CLI tooling.
 
-## Installation and Setup Commands
+The single most important thing to understand: **almost every concern in this repo is OS-split.** Before editing or adding anything, know which platform(s) it applies to and use the matching split mechanism (see below).
 
-### Initial Setup
+## Setup Commands
+
+`./install` is the entry point. It detects the OS with `uname` and runs the matching dotbot config:
+
+- **macOS** → `install-mac.conf.yaml`. Installs Homebrew + dotbot if missing, symlinks configs, then runs `brew bundle --file=homebrew/Brewfile` and installs tmux plugins (TPM) via dotbot's `shell` hook.
+- **Linux** → `install-linux.conf.yaml`. Installs dotbot into a local `.venv`, then symlinks configs and installs tmux plugins.
+
+`./install` **only creates symlinks and runs those hooks** — on Linux it does NOT install packages. The Linux package/tooling install is a separate, manual, root step that must run **first**:
+
 ```bash
-# Install dotfiles using dotbot
-./install
+sudo bash install-linux.sh    # apt packages, PPAs (niri, neovim), Nerd Fonts, kitty, lazygit, diff-so-fancy
+./install                     # then symlink dotfiles
 
-# Install Homebrew packages
-brew bundle --file homebrew/Brewfile
-
-# Install Ruby gems
-bundle install
+sudo bash install-linux.sh --uninstall   # reverse the manually-installed binaries/fonts (apt pkgs left alone)
 ```
 
-### Development Commands
+`backup.sh` snapshots existing real config to `~/.dotfiles-backup/` — `./install` warns if no backup exists. `uninstall.sh` removes symlinks.
+
+## OS-Split Mechanisms (the core pattern)
+
+There is no single "if macOS" switch — the split happens at several layers. When working on a config, match the layer it already uses:
+
+1. **Which files get symlinked** — the two dotbot configs (`install-mac.conf.yaml`, `install-linux.conf.yaml`) are the source of truth for what is linked on each OS. macOS links `yabai`, `skhd`, `sketchybar`, `~/.Brewfile`; Linux links `niri`, `waybar`, `swaync`, `swaylock`, and the helper `scripts/*` into `~/.local/bin`. **Creating a config file does not deploy it** — you must add a `link:` entry to the relevant dotbot config.
+2. **Linux package set** — there is no Linux "Brewfile." Packages live in the `APT_PACKAGES` array and PPA/GitHub-binary sections of `install-linux.sh`. The macOS equivalent is `homebrew/Brewfile`.
+3. **Runtime branching inside a shared file** — shell config branches on `[[ "$(uname)" == "Darwin" ]]` (see `zsh/config/exports.sh` for the per-OS PATH, `zsh/.zshrc` for the macOS-only `zsh-patina`).
+4. **Per-OS include files** — `kitty/kitty.conf` does `include ${KITTY_OS}.conf`, pulling in `kitty/linux.conf` or `kitty/macos.conf`.
+
+## Architecture
+
+### ZSH (`zsh/`)
+- `ZDOTDIR` is set to `~/.config/zsh` via `zshenv` (linked to `~/.zshenv`); everything else loads from there.
+- `zsh/.zshrc` is the loader. It sources a small loader-function library (`zsh/user/packages.sh`) that defines `zsh_add_plugin`, `zsh_add_config`, `zsh_add_file`, then pulls in plugins and config modules.
+- **Plugins are vendored** (committed under `zsh/plugins/`); `zsh_add_plugin` clones them on first run only if absent.
+- Config is modular: `zsh/config/` (exports, aliases, fzf, vim-mode) and `zsh/user/` (prompt, completions, packages). Secrets come from an untracked `~/secrets.sh`; machine-local overrides from `~/.zshrc.local`.
+- `_cached_eval` caches slow `eval`-based init (e.g. `fzf --zsh`) under `~/.cache/zsh/`; clear that dir to regenerate.
+
+### Neovim (`neovim/`)
+- `init.lua` loads `config.options` → `config.lazy` → `config.keymaps` → `config.autocmds`, and **defers** `config.lsp` + `config.health` until `UIEnter` for faster startup.
+- Plugin manager is **Lazy.nvim**; every file in `lua/plugins/` is auto-imported as a plugin spec. `lazy-lock.json` pins versions.
+- **LSP is native Neovim 0.11+ — there is no Mason.** Servers are enabled in `lua/config/lsp.lua` via `vim.lsp.enable({...})`; per-server settings live in top-level `neovim/lsp/<name>.lua` files (loaded via Neovim's built-in `lsp/` runtime path). To add a server: create `neovim/lsp/<name>.lua` and add its name to the `vim.lsp.enable` list.
+- Ruby/Rails-focused: `ruby_lsp`, DAP debugging via `rdbg` (`lua/plugins/dap.lua`), and `neotest-rspec`. See README.md for the full DAP/neotest/vim-rails keybinding reference.
+
+### Tmux (`tmux/`)
+- TPM plugin manager; install plugins with `<prefix> + I` (prefix is `Ctrl+Space`). Config is split into `options.conf`, `keybindings.conf`, `theme.conf`. Many workflows are fzf-driven tmux popups — see the keybinding tables in README.md.
+
+### Desktop stacks
+- **macOS**: `yabai` (WM, needs partial SIP disable — see README.md), `skhd` (hotkeys), `sketchybar` (status bar).
+- **Linux**: `niri` (scrollable-tiling Wayland compositor, `niri/config.kdl`), `waybar` (bar), `swaync` (notifications), `swaylock`/`swayidle` (lock/idle). Helper scripts in `scripts/` are symlinked into `~/.local/bin`: `niri-raise-or-launch` (fuzzel `--launch-prefix` raise-or-launch via niri IPC), `niri-polkit-agent`, `brave-profile`, `flatpak-kill-menu`.
+
+## Common Commands
+
 ```bash
-# Format Neovim Lua files
-stylua neovim/lua/
+stylua neovim/lua/          # format Lua (config: neovim/stylua.toml)
+yamllint install-mac.conf.yaml install-linux.conf.yaml
 
-# Edit dotfiles quickly
-editdots  # Alias that opens dotfiles in nvim
+editdots                    # alias: open the repo in nvim
+zsh:reload                  # re-source ~/.config/zsh/.zshrc
+brew:dump                   # macOS: regenerate homebrew/Brewfile from installed packages
+brew:bundle                 # macOS: install from ~/.Brewfile
 
-# Update tmux plugins
-tmux source ~/.config/tmux/tmux.conf
+# macOS desktop service reloads (aliases)
+yabai:reload   skhd:reload
 
-# Reload yabai configuration
-yabai --restart-service
-```
-
-## Architecture Overview
-
-### Configuration Structure
-- **Dotbot Management**: Uses `install.conf.yaml` for symlink management and `./install` script for setup
-- **Modular Organization**: Each tool has its own directory with focused configuration files
-- **Plugin Systems**: Neovim (Lazy.nvim), Tmux (TPM), ZSH (manual plugin management)
-
-### Key Directories
-- `neovim/`: Complete Neovim configuration with Lua-based plugin system
-- `tmux/`: Tmux configuration split into options, keybindings, and themes
-- `zsh/`: ZSH configuration with modular loading (exports, aliases, functions)
-- `yabai/`: Window manager configuration requiring special macOS permissions
-- `sketchybar/`: Status bar configuration with custom plugins and scripts
-
-### Neovim Configuration
-- **Plugin Manager**: Lazy.nvim with lazy loading enabled
-- **LSP Setup**: Native Neovim 0.11+ LSP configuration (no Mason), focused on Ruby development
-- **Key Features**: Treesitter, completion, AI assistance (CodeCompanion), formatting
-- **Config Structure**: 
-  - `lua/config/`: Core configuration (options, keymaps, autocmds)
-  - `lua/plugins/`: Individual plugin configurations
-  - `stylua.toml`: Formatting rules for Lua code
-
-### Tmux Configuration
-- **Plugin Manager**: TPM (Tmux Plugin Manager)
-- **Key Plugins**: Resurrect (session persistence), Continuum (auto-save), Floax (floating windows)
-- **Config Structure**: Split into `options.conf`, `keybindings.conf`, and `theme.conf`
-
-### ZSH Configuration
-- **Plugin Management**: Manual plugin loading from `zsh/plugins/`
-- **Key Plugins**: autosuggestions, syntax-highlighting, history-substring-search
-- **Config Structure**: Modular loading from `zsh/config/` directory
-
-## Development Workflow Patterns
-
-### Ruby Development Focus
-- LSP configured for Ruby, Rails, and related tools
-- Specific aliases for Rails commands and Ruby tools
-- Gemfile management for Ruby utilities
-
-### AI-Assisted Development
-- CodeCompanion plugin integrated with multiple AI providers
-- Slash commands for common development tasks (/commit, /explain, /fix)
-- Tools available: @cmd_runner, @editor, @files, @full_stack_dev
-
-### Window Management
-- Yabai requires System Integrity Protection modifications
-- SKHD for keyboard shortcuts
-- Sketchybar for status bar with custom plugins
-
-## Important Notes
-
-### macOS Specific Requirements
-- Yabai setup requires disabling System Integrity Protection partially
-- Homebrew installation path optimized for Apple Silicon (`/opt/homebrew/`)
-- Terminal applications configured for macOS (Kitty, Ghostty)
-
-### Plugin Management
-- Neovim plugins auto-install on first run via Lazy.nvim
-- Tmux plugins require manual installation: `<prefix> + I`
-- ZSH plugins are committed to the repository
-
-### Path Configuration
-- Custom PATH setup in `zsh/config/exports.sh` prioritizes Homebrew tools
-- Local binaries in `~/.local/bin` and `~/.bin`
-- Python, PostgreSQL, and other tools have specific PATH entries
-
-## Testing and Validation
-
-### Configuration Testing
-```bash
-# Test Neovim configuration
+# Neovim health check
 nvim --headless -c "checkhealth" -c "q"
-
-# Validate tmux configuration
-tmux source ~/.config/tmux/tmux.conf
-
-# Test ZSH configuration
-zsh -n ~/.zshenv
 ```
 
-### Linting
-```bash
-# Format Neovim Lua files
-stylua neovim/lua/
+## devmode (macOS only)
 
-# Validate YAML files
-yamllint install.conf.yaml
-```
+`scripts/devmode.sh` (invoked via the `/devmode on|off|status` skill) toggles the macOS desktop chrome — yabai, skhd, sketchybar, and cosmetic `defaults` — capturing and restoring prior state. It is macOS-specific; there is no Linux equivalent.
+
+## Conventions
+
+- Linux installs prefer user-local paths (`~/.local/bin`, `~/.local/share`, `~/.local/<app>.app`); `/usr/local/bin` is used only for thin symlinks into those payloads.
+- Comments in `install-linux.sh` and `scripts/niri-raise-or-launch` document *why* non-obvious choices were made (masked waybar service, PPA pins, PWA app_id matching) — read them before changing that behavior.

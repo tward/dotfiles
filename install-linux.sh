@@ -24,6 +24,9 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   rm -f "${REAL_HOME}/.local/share/applications/kitty-open.desktop"
   rm -f "${REAL_HOME}/.local/bin/yt-dlp"
   rm -f "${REAL_HOME}/.local/bin/niri-float-sticky"
+  rm -f "${REAL_HOME}/.local/bin/mutagen"
+  rm -f "${REAL_HOME}/.local/bin/mutagen-agents.tar.gz"
+  rm -rf "${REAL_HOME}/.local/state/dotfiles-bin"   # version stamps for non-apt binaries
 
   # Unmask the waybar service if we masked it (symlink to /dev/null).
   WAYBAR_MASK="${REAL_HOME}/.config/systemd/user/waybar.service"
@@ -74,6 +77,58 @@ case "$ARCH" in
     ;;
 esac
 
+# --- Download verification helpers ---
+# Only for the non-apt (GitHub/upstream) installs below; apt packages are already
+# authenticated by the distro's signed repositories. gnupg is in APT_PACKAGES so
+# it's present by the time these run.
+
+# verify_sig <pubkey_url> <pinned_fpr> <sig_file> <signed_file>
+# GPG-verify a detached signature against a PINNED signer fingerprint, in a
+# throwaway keyring (never touches root's or the user's GPG state). Returns
+# non-zero on any download/import/fingerprint/signature failure so the caller
+# fails closed and skips the install.
+verify_sig() {
+  local key_url="$1" fpr="$2" sig="$3" file="$4"
+  local g="$TMPDIR/gnupg.$RANDOM"
+  mkdir -p "$g"; chmod 700 "$g"
+  curl -sfL "$key_url" | GNUPGHOME="$g" gpg --quiet --batch --import || return 1
+  GNUPGHOME="$g" gpg --with-colons --fingerprint | grep -q "^fpr:::::::::${fpr}:" || return 1
+  GNUPGHOME="$g" gpg --quiet --batch --verify "$sig" "$file"
+}
+
+# verify_sha256 <checksums_file> <filename> [dir]
+# Check one file's SHA-256 against a checksums manifest via `sha256sum -c`.
+# Integrity only (the manifest shares the download's origin) unless the manifest
+# itself was authenticated with verify_sig first.
+verify_sha256() {
+  local sums="$1" name="$2" dir="${3:-.}"
+  ( cd "$dir" && grep " ${name}$" "$sums" | sha256sum -c - )
+}
+
+# latest_gh_tag <owner/repo> -> latest release tag via the /releases/latest
+# redirect (no API token, no rate limit). Empty on failure.
+latest_gh_tag() {
+  curl -fsSL -o /dev/null -w '%{url_effective}' "https://github.com/$1/releases/latest" | sed 's#.*/tag/##'
+}
+
+# Version stamps for the non-apt binaries so re-runs skip work that's already
+# current and auto-(re)install when the target version changes. The stamp records
+# what THIS script installed — these binaries don't all report a parseable version
+# (diff-so-fancy and niri-float-sticky report none) — so a manually swapped binary
+# won't be re-detected; fine for installs this script owns. Pair with `-x` so a
+# deleted binary still triggers reinstall regardless of the stamp.
+# bin_current <name> <target_version> <binary_path> -> true (skip) if up-to-date.
+bin_current() {
+  local dir="${REAL_HOME}/.local/state/dotfiles-bin"
+  [[ -n "$2" && -x "$3" && "$(cat "$dir/$1" 2>/dev/null)" == "$2" ]]
+}
+# bin_stamp <name> <target_version> -> record after a successful install.
+bin_stamp() {
+  local dir="${REAL_HOME}/.local/state/dotfiles-bin"
+  sudo -u "${SUDO_USER:-$USER}" mkdir -p "$dir" || return 0
+  printf '%s\n' "$2" | sudo -u "${SUDO_USER:-$USER}" tee "$dir/$1" >/dev/null || return 0
+}
+
 # --- apt packages ---
 APT_PACKAGES=(
   software-properties-common
@@ -88,6 +143,7 @@ APT_PACKAGES=(
   jq
   wget
   curl
+  gnupg           # verify GPG-signed non-apt downloads (mutagen, yt-dlp) — see verify_sig below
   ncurses-term
   python3-pip
   python3-venv
@@ -130,13 +186,14 @@ echo "The following PPAs will be added:"
 echo "  ppa:avengemedia/danklinux (niri + xwayland-satellite)"
 echo "  ppa:neovim-ppa/unstable (neovim 0.11+)"
 echo ""
-echo "The following will be installed from external sources:"
+echo "The following will be installed from external sources (signatures/checksums verified where published):"
 echo "  kitty (official installer)"
-echo "  Hack Nerd Font + Symbols-Only Nerd Font (~/.local/share/fonts)"
-echo "  lazygit (GitHub release)"
-echo "  diff-so-fancy (GitHub release)"
-echo "  yt-dlp (GitHub release → ~/.local/bin)"
-echo "  niri-float-sticky (built from Go source → ~/.local/bin)"
+echo "  Hack Nerd Font + Symbols-Only Nerd Font (~/.local/share/fonts; SHA-256 verified)"
+echo "  lazygit (GitHub release; SHA-256 verified)"
+echo "  diff-so-fancy (GitHub release; no upstream checksums published)"
+echo "  yt-dlp (GitHub release → ~/.local/bin; GPG-signed checksums verified)"
+echo "  niri-float-sticky (built from Go source → ~/.local/bin; Go module checksums)"
+echo "  mutagen (signed GitHub release → ~/.local/bin; GPG-signed checksums verified)"
 echo ""
 read -p "Proceed? [y/N] " answer
 [[ "$answer" =~ ^[Yy]$ ]] || exit 0
@@ -211,6 +268,13 @@ else
     set -e
     mkdir -p "$HOME/.local/share/fonts/NerdFonts"
     cd "$HOME/.local/share/fonts/NerdFonts"
+    # Fetch the release SHA-256 manifest once; integrity-check each font tarball
+    # against it before extracting (no upstream signature is published).
+    sums="$(mktemp)"
+    if ! curl -fsL "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/SHA-256.txt" -o "$sums"; then
+      echo "WARNING: Could not fetch Nerd Fonts SHA-256.txt; skipping fonts (cannot verify)."
+      exit 0
+    fi
     for family in Hack NerdFontsSymbolsOnly; do
       marker="$family/.installed"
       if [[ -f "$marker" ]]; then
@@ -219,14 +283,26 @@ else
       fi
       echo "  Downloading ${family}.tar.xz..."
       url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${family}.tar.xz"
+      tmpf="$(mktemp)"
+      if ! curl -fL "$url" -o "$tmpf"; then
+        echo "WARNING: Failed to download ${family}. Skipping."
+        rm -f "$tmpf"; continue
+      fi
+      exp="$(grep " ${family}.tar.xz$" "$sums" | cut -d" " -f1)"
+      act="$(sha256sum "$tmpf" | cut -d" " -f1)"
+      if [[ -z "$exp" || "$exp" != "$act" ]]; then
+        echo "WARNING: ${family} checksum mismatch. Skipping."
+        rm -f "$tmpf"; continue
+      fi
       mkdir -p "$family"
-      if curl -fL "$url" | tar -xJ -C "$family"; then
+      if tar -xJ -C "$family" -f "$tmpf"; then
         touch "$marker"
-        echo "  Installed ${family}"
+        echo "  Installed & verified ${family}"
       else
-        echo "WARNING: Failed to download/extract ${family}. Cleaning up."
+        echo "WARNING: Failed to extract ${family}. Cleaning up."
         rm -rf "$family"
       fi
+      rm -f "$tmpf"
     done
     fc-cache -f "$HOME/.local/share/fonts"
   '
@@ -254,26 +330,49 @@ apt install -y neovim
 echo ""
 if [[ -n "$LAZYGIT_ARCH" ]]; then
   echo "==> Installing lazygit..."
-  LAZYGIT_VERSION=$(curl -sf "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*') || true
+  LAZYGIT_TAG="$(latest_gh_tag jesseduffield/lazygit)"   # e.g. v0.62.2
+  LAZYGIT_VERSION="${LAZYGIT_TAG#v}"                      # 0.62.2 (asset/tarball naming)
   if [[ -z "$LAZYGIT_VERSION" ]]; then
     echo "WARNING: Could not determine lazygit version. Skipping."
+  elif bin_current lazygit "$LAZYGIT_VERSION" /usr/local/bin/lazygit; then
+    echo "  lazygit $LAZYGIT_VERSION already installed."
   else
-    if curl -fLo "$TMPDIR/lazygit.tar.gz" "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_${LAZYGIT_ARCH}.tar.gz"; then
-      tar xf "$TMPDIR/lazygit.tar.gz" -C "$TMPDIR" lazygit
-      install "$TMPDIR/lazygit" /usr/local/bin
-      echo "  Installed lazygit $LAZYGIT_VERSION"
+    # Asset names are lowercase: lazygit_<ver>_linux_<arch>.tar.gz. Pull the
+    # release's checksums.txt and verify before installing. No upstream signature
+    # is published, so this is an integrity (not authenticity) check.
+    LAZYGIT_TARBALL="lazygit_${LAZYGIT_VERSION}_linux_${LAZYGIT_ARCH}.tar.gz"
+    LAZYGIT_BASE="https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}"
+    if curl -fLo "$TMPDIR/$LAZYGIT_TARBALL" "$LAZYGIT_BASE/$LAZYGIT_TARBALL" \
+       && curl -fLo "$TMPDIR/lazygit-checksums.txt" "$LAZYGIT_BASE/checksums.txt"; then
+      if verify_sha256 "$TMPDIR/lazygit-checksums.txt" "$LAZYGIT_TARBALL" "$TMPDIR"; then
+        tar xf "$TMPDIR/$LAZYGIT_TARBALL" -C "$TMPDIR" lazygit
+        install "$TMPDIR/lazygit" /usr/local/bin
+        bin_stamp lazygit "$LAZYGIT_VERSION"
+        echo "  Installed & verified lazygit $LAZYGIT_VERSION"
+      else
+        echo "WARNING: lazygit checksum mismatch. Skipping."
+      fi
     else
       echo "WARNING: Failed to download lazygit. Skipping."
     fi
   fi
 
   # --- diff-so-fancy from GitHub ---
+  # NOTE: upstream ships only the bare script — no checksums or signatures — so
+  # there is nothing to verify against beyond the TLS transfer. It also reports no
+  # version, so skip/upgrade is decided from the release tag via a version stamp.
   echo ""
   echo "==> Installing diff-so-fancy..."
-  if curl -fLo "$TMPDIR/diff-so-fancy" "https://github.com/so-fancy/diff-so-fancy/releases/latest/download/diff-so-fancy"; then
+  DSF_TAG="$(latest_gh_tag so-fancy/diff-so-fancy)"   # e.g. v1.4.10
+  if [[ -z "$DSF_TAG" ]]; then
+    echo "WARNING: Could not determine diff-so-fancy version. Skipping."
+  elif bin_current diff-so-fancy "$DSF_TAG" /usr/local/bin/diff-so-fancy; then
+    echo "  diff-so-fancy $DSF_TAG already installed."
+  elif curl -fLo "$TMPDIR/diff-so-fancy" "https://github.com/so-fancy/diff-so-fancy/releases/download/${DSF_TAG}/diff-so-fancy"; then
     chmod +x "$TMPDIR/diff-so-fancy"
     mv "$TMPDIR/diff-so-fancy" /usr/local/bin/
-    echo "  Installed diff-so-fancy"
+    bin_stamp diff-so-fancy "$DSF_TAG"
+    echo "  Installed diff-so-fancy $DSF_TAG"
   else
     echo "WARNING: Failed to download diff-so-fancy. Skipping."
   fi
@@ -287,12 +386,30 @@ fi
 # REAL_HOME is set above in the Kitty section.
 echo ""
 echo "==> Installing yt-dlp..."
-if curl -fLo "$TMPDIR/yt-dlp" "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"; then
-  sudo -u "${SUDO_USER:-$USER}" mkdir -p "${REAL_HOME}/.local/bin"
-  cp "$TMPDIR/yt-dlp" "${REAL_HOME}/.local/bin/yt-dlp"
-  chmod 0755 "${REAL_HOME}/.local/bin/yt-dlp"
-  chown "${SUDO_USER:-$USER}:" "${REAL_HOME}/.local/bin/yt-dlp"
-  echo "  Installed yt-dlp to ~/.local/bin (run 'yt-dlp -U' to update)"
+# Releases ship GPG-signed checksums (SHA2-256SUMS + .sig); verify the signature
+# (key from the repo's public.key, fingerprint pinned) and the checksum first.
+YTDLP_GPG_FPR="AC0CBBE6848D6A873464AF4E57CF65933B5A7581"   # yt-dlp signing key (public.key)
+YTDLP_VERSION="$(latest_gh_tag yt-dlp/yt-dlp)"             # date tag, e.g. 2026.03.17
+YTDLP_BASE="https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}"
+if [[ -z "$YTDLP_VERSION" ]]; then
+  echo "WARNING: Could not determine yt-dlp version. Skipping."
+elif bin_current yt-dlp "$YTDLP_VERSION" "${REAL_HOME}/.local/bin/yt-dlp"; then
+  echo "  yt-dlp $YTDLP_VERSION already installed ('yt-dlp -U' self-updates between runs)."
+elif curl -fLo "$TMPDIR/yt-dlp" "$YTDLP_BASE/yt-dlp" \
+     && curl -fLo "$TMPDIR/yt-dlp-SHA2-256SUMS" "$YTDLP_BASE/SHA2-256SUMS" \
+     && curl -fLo "$TMPDIR/yt-dlp-SHA2-256SUMS.sig" "$YTDLP_BASE/SHA2-256SUMS.sig"; then
+  if verify_sig "https://github.com/yt-dlp/yt-dlp/raw/master/public.key" "$YTDLP_GPG_FPR" \
+       "$TMPDIR/yt-dlp-SHA2-256SUMS.sig" "$TMPDIR/yt-dlp-SHA2-256SUMS" \
+     && verify_sha256 "$TMPDIR/yt-dlp-SHA2-256SUMS" "yt-dlp" "$TMPDIR"; then
+    sudo -u "${SUDO_USER:-$USER}" mkdir -p "${REAL_HOME}/.local/bin"
+    cp "$TMPDIR/yt-dlp" "${REAL_HOME}/.local/bin/yt-dlp"
+    chmod 0755 "${REAL_HOME}/.local/bin/yt-dlp"
+    chown "${SUDO_USER:-$USER}:" "${REAL_HOME}/.local/bin/yt-dlp"
+    bin_stamp yt-dlp "$YTDLP_VERSION"
+    echo "  Installed & verified yt-dlp $YTDLP_VERSION to ~/.local/bin (run 'yt-dlp -U' to update)"
+  else
+    echo "WARNING: yt-dlp signature/checksum verification failed. Skipping."
+  fi
 else
   echo "WARNING: Failed to download yt-dlp. Skipping."
 fi
@@ -305,23 +422,28 @@ fi
 # No prebuilt binaries exist and Go is NOT a system dependency, so build with a
 # THROWAWAY toolchain: download Go into $TMPDIR (auto-removed by the EXIT trap),
 # build the pinned tag straight into the user's ~/.local/bin, and leave no Go on
-# the system. Guarded on the binary already existing — delete it to rebuild/upgrade.
+# the system. Version-stamped: skips when current, rebuilds when NFS_VERSION changes.
 NFS_VERSION="v0.0.8"
 GO_VERSION="1.23.7"
 NFS_BIN="${REAL_HOME}/.local/bin/niri-float-sticky"
 echo ""
 echo "==> Installing niri-float-sticky ${NFS_VERSION}..."
-if [[ -x "$NFS_BIN" ]]; then
-  echo "  Already installed at ~/.local/bin/niri-float-sticky (rm it to rebuild)."
+if bin_current niri-float-sticky "$NFS_VERSION" "$NFS_BIN"; then
+  echo "  niri-float-sticky ${NFS_VERSION} already installed."
 else
   case "$ARCH" in
-    x86_64)  GO_ARCH="amd64" ;;
-    aarch64) GO_ARCH="arm64" ;;
-    *)       GO_ARCH="" ;;
+    x86_64)  GO_ARCH="amd64"; GO_SHA256="4741525e69841f2e22f9992af25df0c1112b07501f61f741c12c6389fcb119f3" ;;
+    aarch64) GO_ARCH="arm64"; GO_SHA256="597acbd0505250d4d98c4c83adf201562a8c812cbcd7b341689a07087a87a541" ;;
+    *)       GO_ARCH=""; GO_SHA256="" ;;
   esac
   if [[ -z "$GO_ARCH" ]]; then
     echo "WARNING: Unsupported architecture $ARCH for the Go toolchain. Skipping niri-float-sticky."
-  elif curl -fLo "$TMPDIR/go.tar.gz" "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"; then
+  # Verify the toolchain against its PINNED SHA-256 (from go.dev's official downloads
+  # JSON: https://go.dev/dl/?mode=json&include=all). Pinned in-repo, not fetched, so
+  # it catches a compromised go.dev/CDN — not just transit corruption. Bump both
+  # hashes when GO_VERSION changes (go.dev/dl lists them per release).
+  elif curl -fLo "$TMPDIR/go.tar.gz" "https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz" \
+       && echo "${GO_SHA256}  $TMPDIR/go.tar.gz" | sha256sum -c - >/dev/null 2>&1; then
     tar -C "$TMPDIR" -xzf "$TMPDIR/go.tar.gz"   # extracts to $TMPDIR/go (throwaway GOROOT)
     chmod 755 "$TMPDIR"                          # let the build user traverse in to reach GOROOT
     install -d -o "${SUDO_USER:-$USER}" "$TMPDIR/gopath" "$TMPDIR/gocache"
@@ -335,12 +457,61 @@ else
          GOCACHE="$TMPDIR/gocache" \
          GOBIN="${REAL_HOME}/.local/bin" \
          "$TMPDIR/go/bin/go" install "github.com/probeldev/niri-float-sticky@${NFS_VERSION}"; then
-      echo "  Installed niri-float-sticky to ~/.local/bin"
+      bin_stamp niri-float-sticky "$NFS_VERSION"
+      echo "  Installed niri-float-sticky ${NFS_VERSION} to ~/.local/bin"
     else
       echo "WARNING: Failed to build niri-float-sticky. Skipping."
     fi
   else
-    echo "WARNING: Failed to download the Go toolchain. Skipping niri-float-sticky."
+    echo "WARNING: Failed to download or verify the Go toolchain. Skipping niri-float-sticky."
+  fi
+fi
+
+# --- Mutagen (signed GitHub release → ~/.local/bin) ---
+# Two-way SSH file sync for the Linux<->macOS dev workflow (see the
+# "Undock / Redock" runbook). No apt/PPA exists, and `go install` yields an
+# incomplete binary (no agent bundle -> remote sync fails), so the signed release
+# tarball is the only viable source. Verified the distro way: GPG-check SHA256SUMS
+# against mutagenbot's pinned key, then checksum the tarball. Only this (daemon)
+# host needs the full install; the mac gets an agent auto-deployed over SSH from
+# mutagen-agents.tar.gz, so both files must land together on PATH. User-local so
+# the per-user daemon and its ~/.mutagen state stay user-owned. Run
+# `mutagen daemon register` once, as your user, to autostart it.
+MUTAGEN_VERSION="0.18.1"
+MUTAGEN_GPG_FPR="34E4B7729CFC6FB4E776CB3B781D56DB8AFBBFEA"   # Mutagen Bot <bot@mutagen.io>
+case "$ARCH" in
+  x86_64)  MUTAGEN_ARCH="amd64" ;;
+  aarch64) MUTAGEN_ARCH="arm64" ;;
+  *)       MUTAGEN_ARCH="" ;;
+esac
+echo ""
+echo "==> Installing Mutagen ${MUTAGEN_VERSION}..."
+MUTAGEN_BIN="${REAL_HOME}/.local/bin/mutagen"
+if bin_current mutagen "$MUTAGEN_VERSION" "$MUTAGEN_BIN"; then
+  echo "  mutagen ${MUTAGEN_VERSION} already installed."
+elif [[ -z "$MUTAGEN_ARCH" ]]; then
+  echo "WARNING: Unsupported architecture $ARCH for Mutagen. Skipping."
+else
+  MUTAGEN_TARBALL="mutagen_linux_${MUTAGEN_ARCH}_v${MUTAGEN_VERSION}.tar.gz"
+  MUTAGEN_BASE="https://github.com/mutagen-io/mutagen/releases/download/v${MUTAGEN_VERSION}"
+  mdir="$TMPDIR/mutagen"; mkdir -p "$mdir"
+  if curl -fLo "$mdir/$MUTAGEN_TARBALL" "$MUTAGEN_BASE/$MUTAGEN_TARBALL" \
+     && curl -fLo "$mdir/SHA256SUMS" "$MUTAGEN_BASE/SHA256SUMS" \
+     && curl -fLo "$mdir/SHA256SUMS.gpg" "$MUTAGEN_BASE/SHA256SUMS.gpg"; then
+    if verify_sig "https://github.com/mutagenbot.gpg" "$MUTAGEN_GPG_FPR" \
+         "$mdir/SHA256SUMS.gpg" "$mdir/SHA256SUMS" \
+       && verify_sha256 "$mdir/SHA256SUMS" "$MUTAGEN_TARBALL" "$mdir"; then
+      sudo -u "${SUDO_USER:-$USER}" mkdir -p "${REAL_HOME}/.local/bin"
+      tar -xzf "$mdir/$MUTAGEN_TARBALL" -C "${REAL_HOME}/.local/bin" mutagen mutagen-agents.tar.gz
+      chown "${SUDO_USER:-$USER}:" "${REAL_HOME}/.local/bin/mutagen" "${REAL_HOME}/.local/bin/mutagen-agents.tar.gz"
+      chmod 0755 "${REAL_HOME}/.local/bin/mutagen"
+      bin_stamp mutagen "$MUTAGEN_VERSION"
+      echo "  Installed & verified mutagen to ~/.local/bin"
+    else
+      echo "WARNING: Mutagen signature/checksum verification failed. Skipping."
+    fi
+  else
+    echo "WARNING: Failed to download Mutagen release assets. Skipping."
   fi
 fi
 
