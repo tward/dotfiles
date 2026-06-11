@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+#
+# ddc-brightness — step external-monitor brightness up/down over DDC/CI
+# (ddcutil), with an instant OSD popup via notify-send/swaync. Bound to the
+# XF86MonBrightness* keys in niri/config.kdl.
+#
+# Why this exists: the only display is an external monitor, which has no
+# /sys/class/backlight device, so brightnessctl can't touch it. Brightness
+# goes over the DDC/CI i2c bus instead (VCP feature 0x10), which needs the
+# i2c-dev module (loaded via install-linux.sh) and ddcutil.
+#
+# DDC is a slow bus (~0.2 s+ per command), so this replicates the trick
+# GNOME/KDE use for external monitors: the current level is cached in
+# XDG_RUNTIME_DIR and the OSD fires from the cache *before* the bus write,
+# so feedback is instant while the monitor catches up. Writes are absolute
+# (not DDC-relative) to keep cache and monitor in step. The cache only
+# drifts if brightness is changed on the monitor's own joystick — delete
+# $XDG_RUNTIME_DIR/ddc-brightness/level (or re-login) to re-seed.
+
+set -euo pipefail
+
+STEP=10
+VCP_BRIGHTNESS=10   # VCP feature code 0x10 = luminance
+STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/ddc-brightness"
+mkdir -p "$STATE_DIR"
+
+die() {
+    notify-send -e -t 3000 -u critical "Brightness" "$1" 2>/dev/null || true
+    exit 1
+}
+
+# Serialize concurrent invocations (key auto-repeat): later presses queue on
+# earlier ones instead of racing the cache read-modify-write and the i2c bus.
+exec 9>"$STATE_DIR/lock"
+flock 9
+
+if [ -s "$STATE_DIR/level" ]; then
+    cur=$(<"$STATE_DIR/level")
+else
+    # First call this session: one slow read from the monitor to seed the
+    # cache. --brief getvcp prints "VCP 10 C <current> <max>".
+    cur=$(ddcutil --brief getvcp "$VCP_BRIGHTNESS" | awk '{print $4}') ||
+        die "ddcutil getvcp failed — i2c-dev loaded? ddcutil installed?"
+    [ -n "$cur" ] || die "could not parse current brightness from ddcutil"
+fi
+
+case "${1:-}" in
+    up)   new=$(( cur + STEP )) ;;
+    down) new=$(( cur - STEP )) ;;
+    *)    echo "usage: ddc-brightness up|down" >&2; exit 2 ;;
+esac
+(( new > 100 )) && new=100
+(( new < 0 ))  && new=0
+
+echo "$new" > "$STATE_DIR/level"
+
+# OSD first, from the cache — instant feedback while the bus write lags.
+# -e (transient) keeps it out of the swaync control-center history; -p/-r
+# replace the previous popup instead of stacking; the int:value hint renders
+# swaync's progress bar.
+nid=""
+[ -s "$STATE_DIR/notify-id" ] && nid=$(<"$STATE_DIR/notify-id")
+notify-send -p -e -t 1500 ${nid:+-r "$nid"} \
+    -h int:value:"$new" "Brightness ${new}%" > "$STATE_DIR/notify-id" || true
+
+ddcutil --noverify setvcp "$VCP_BRIGHTNESS" "$new" ||
+    die "ddcutil setvcp failed — i2c-dev loaded? /dev/i2c-* permissions?"

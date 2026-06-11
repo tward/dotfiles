@@ -27,6 +27,7 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   rm -f "${REAL_HOME}/.local/bin/mutagen"
   rm -f "${REAL_HOME}/.local/bin/mutagen-agents.tar.gz"
   rm -rf "${REAL_HOME}/.local/state/dotfiles-bin"   # version stamps for non-apt binaries
+  rm -f /etc/modules-load.d/i2c-dev.conf            # i2c-dev autoload for DDC/CI brightness (ddcutil)
 
   # Unmask the waybar service if we masked it (symlink to /dev/null).
   WAYBAR_MASK="${REAL_HOME}/.config/systemd/user/waybar.service"
@@ -173,6 +174,8 @@ APT_PACKAGES=(
 
   # niri desktop — session services (a full DE bundles these; we start them from
   # niri/config.kdl). All Wayland-native and distro-portable.
+  ddcutil         # external-monitor brightness over DDC/CI (scripts/ddc-brightness); needs i2c-dev, enabled below
+  libnotify-bin   # notify-send — OSD popups from scripts (ddc-brightness, flatpak-kill-menu)
   swaylock        # screen locker (Super+Alt+L, and swayidle on idle/sleep)
   swayidle        # idle daemon: auto-lock, DPMS off, lock-before-sleep
   sway-notification-center  # notification daemon + center panel (binary is "swaync"); Debian/Ubuntu package name
@@ -557,6 +560,18 @@ if [[ -e /usr/lib/systemd/user/swaync.service ]] || [[ -e /etc/systemd/user/sway
 else
   echo "  No packaged swaync.service found; nothing to mask."
 fi
+
+# --- i2c-dev module for DDC/CI monitor brightness ---
+# ddcutil (scripts/ddc-brightness, bound to the brightness keys in
+# niri/config.kdl) talks to external monitors over DDC/CI, which needs the
+# in-tree i2c-dev module to expose /dev/i2c-* to userspace. It is not
+# auto-loaded by anything, so persist it. No group/udev setup is needed: the
+# ddcutil package ships udev rules tagging display i2c devices uaccess, so
+# the logged-in seat user gets access automatically.
+echo ""
+echo "==> Enabling i2c-dev module (DDC/CI monitor brightness)..."
+echo i2c-dev > /etc/modules-load.d/i2c-dev.conf
+modprobe i2c-dev || echo "  WARNING: modprobe i2c-dev failed; brightness keys won't work until it loads."
 
 # --- Set default shell ---
 echo ""
