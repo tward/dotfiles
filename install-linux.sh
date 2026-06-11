@@ -28,6 +28,7 @@ if [[ "${1:-}" == "--uninstall" ]]; then
   rm -f "${REAL_HOME}/.local/bin/mutagen-agents.tar.gz"
   rm -rf "${REAL_HOME}/.local/state/dotfiles-bin"   # version stamps for non-apt binaries
   rm -f /etc/modules-load.d/i2c-dev.conf            # i2c-dev autoload for DDC/CI brightness (ddcutil)
+  rm -f /etc/udev/rules.d/60-ddcutil-i2c-local.rules  # broadened uaccess rule for DDC/CI brightness
 
   # Unmask the waybar service if we masked it (symlink to /dev/null).
   WAYBAR_MASK="${REAL_HOME}/.config/systemd/user/waybar.service"
@@ -561,17 +562,30 @@ else
   echo "  No packaged swaync.service found; nothing to mask."
 fi
 
-# --- i2c-dev module for DDC/CI monitor brightness ---
+# --- i2c-dev module + udev rule for DDC/CI monitor brightness ---
 # ddcutil (scripts/ddc-brightness, bound to the brightness keys in
 # niri/config.kdl) talks to external monitors over DDC/CI, which needs the
 # in-tree i2c-dev module to expose /dev/i2c-* to userspace. It is not
-# auto-loaded by anything, so persist it. No group/udev setup is needed: the
-# ddcutil package ships udev rules tagging display i2c devices uaccess, so
-# the logged-in seat user gets access automatically.
+# auto-loaded by anything, so persist it.
+#
+# Device access: ddcutil's packaged udev rule (60-ddcutil-i2c.rules) tags GPU
+# i2c devices uaccess (per-seat ACL via logind, no group/re-login needed) but
+# only matches PCI class 0x030000 (VGA compatible). AMD GPUs can enumerate as
+# 0x038000 (Display controller: other) — this machine's does — and then the
+# packaged rule silently misses and ddcutil gets EACCES. Install a local rule
+# broadened to any 0x03* display class; udevadm trigger applies the ACLs
+# immediately.
 echo ""
-echo "==> Enabling i2c-dev module (DDC/CI monitor brightness)..."
+echo "==> Enabling i2c-dev module + udev access rule (DDC/CI monitor brightness)..."
 echo i2c-dev > /etc/modules-load.d/i2c-dev.conf
 modprobe i2c-dev || echo "  WARNING: modprobe i2c-dev failed; brightness keys won't work until it loads."
+printf '%s\n' \
+  '# Broadens ddcutil'\''s packaged 60-ddcutil-i2c.rules (class 0x030000 only) to' \
+  '# all PCI display classes — AMD GPUs can be 0x038000. See install-linux.sh.' \
+  'SUBSYSTEM=="i2c-dev", KERNEL=="i2c-[0-9]*", ATTRS{class}=="0x03*", TAG+="uaccess"' \
+  > /etc/udev/rules.d/60-ddcutil-i2c-local.rules
+udevadm control --reload-rules
+udevadm trigger --subsystem-match=i2c-dev
 
 # --- Set default shell ---
 echo ""
