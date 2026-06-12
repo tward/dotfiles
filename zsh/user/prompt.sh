@@ -118,6 +118,13 @@ _prompt_precmd() {
   # Async git + language versions (non-blocking)
   _prompt_async_start
 
+  # Keep pane_title non-empty so tmux-resurrect can restore the cwd. Claude Code
+  # clears the title on exit; without this repaint the pane sits at a prompt with
+  # an empty title, which tmux-resurrect saves as a blank field. On restore its
+  # `IFS=$'\t' read` collapses the blank field (tab is IFS-whitespace), shifting
+  # pane_current_path out of position so the pane spawns in $HOME, not its cwd.
+  print -Pn '\e]2;%~\a'
+
   # SSH hostname
   local host=""
   [[ -n "$SSH_TTY" ]] && host="%m "
