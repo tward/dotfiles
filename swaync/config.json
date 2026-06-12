@@ -21,26 +21,18 @@
   "hide-on-clear": true,
   "hide-on-action": true,
   "widgets": [
-    "title",
-    "dnd",
     "mpris",
     "volume",
     "backlight",
     "buttons-grid",
     "menubar",
     "label",
+    "title",
+    "dnd",
     "inhibitors",
     "notifications"
   ],
   "widget-config": {
-    "title": {
-      "text": "Notifications",
-      "clear-all-button": true,
-      "button-text": "Clear All"
-    },
-    "dnd": {
-      "text": "Do Not Disturb"
-    },
     "label": {
       "text": "label widget — static custom text",
       "max-lines": 3
@@ -91,6 +83,18 @@
           }
         ]
       }
+    },
+    "title": {
+      "text": "Notifications",
+      "clear-all-button": true,
+      "button-text": "Clear All"
+    },
+    "dnd": {
+      "text": "Do Not Disturb"
+    },
+    "label": {
+      "text": "label widget — static custom text",
+      "max-lines": 3
     },
     "inhibitors": {
       "text": "Inhibitors",
