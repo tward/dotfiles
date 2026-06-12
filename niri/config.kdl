@@ -369,6 +369,7 @@ workspace "core"
 workspace "coms"
 workspace "ops"
 workspace "daw"
+workspace "play"
 
 // Window rules let you adjust behavior for individual windows.
 // Find more information on the wiki:
@@ -504,6 +505,12 @@ window-rule {
     match app-id=r#"^gitkraken$"#
     match app-id=r#"^obsidian$"#
     open-on-workspace "core"
+}
+
+// Games → "play": Lutris (Flatpak app-id net.lutris.Lutris).
+window-rule {
+    match app-id=r#"^net\.lutris\.Lutris$"#
+    open-on-workspace "play"
 }
 
 // Web apps → "ops": Vercel + Supabase Studio (Brave PWAs).
