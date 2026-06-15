@@ -576,6 +576,11 @@ binds {
     // Pick a Brave profile from a fuzzel menu built live from Brave's profile list
     // (rename/add/delete-proof). See scripts/brave-profile.
     Mod+B hotkey-overlay-title="Open a Brave profile: brave-profile" { spawn-sh "$HOME/.local/bin/brave-profile"; }
+    // Toggle the external monitor between desktop (4K/scale 1.5) and game
+    // (1440p/scale 1.0 + VRR) profiles via niri IPC — drops the GPU's render
+    // resolution for fullscreen games without reflowing the desktop. repeat=false
+    // so key auto-repeat can't double-toggle. See scripts/niri-display-mode.
+    Mod+G repeat=false hotkey-overlay-title="Toggle game display mode: 1440p/4K" { spawn-sh "$HOME/.local/bin/niri-display-mode toggle"; }
     // Pin/unpin the focused floating window so it follows you across workspaces
     // (e.g. the mpv PiP). Calls niri-float-sticky's IPC client; the daemon itself is
     // started via spawn-sh-at-startup above. spawn-sh so $HOME expands.

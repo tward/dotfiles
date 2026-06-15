@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+#
+# niri-display-mode — toggle the external monitor between a full-quality
+# "desktop" profile and a lower-resolution "game" profile, over niri IPC.
+# Bound to Mod+G in niri/config.kdl; built to ~/.local/bin by install-linux.conf.yaml.
+#
+# Why this exists: niri/Wayland won't let a fullscreen game negotiate its own
+# resolution (no client-facing output-mode protocol), so a game is stuck
+# rendering at whatever mode the compositor is in. At our desktop default
+# (3840x2160 @ scale 1.5) the GPU rasterises the full 4K — 8.3M px — REGARDLESS
+# of scale: scale only changes logical coordinates, not what the GPU draws.
+# Switching the output to a true 2560x1440 mode at scale 1.0 cuts that to 3.7M
+# px (~44%) for a large, free performance win in games.
+#
+# Both profiles share the SAME logical size (3840/1.5 = 2560/1.0 = 2560x1440),
+# so the toggle does NOT reflow the desktop — only the physical render
+# resolution changes. Game mode also turns VRR on (left off on the desktop,
+# where some panels flicker on static content); see the README VRR notes.
+#
+# niri's `output` IPC changes are temporary and forgotten on a config reload —
+# which is exactly what we want here: game mode auto-reverts to the configured
+# desktop default on the next `niri msg action load-config-file`, reboot, etc.
+
+set -euo pipefail
+
+# Match the monitor by EDID model, not connector: the toggle then keeps working
+# if the panel lands on a different DP/HDMI port (the connector name "DP-4" is
+# not stable across replugs; the model is). Change MODEL for a different panel.
+MODEL="DELL U2725QE"
+
+DESKTOP_MODE="3840x2160@120.000"; DESKTOP_SCALE="1.5"
+GAME_MODE="2560x1440@119.998";    GAME_SCALE="1.0"
+
+STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/niri-display-mode"
+mkdir -p "$STATE_DIR"
+
+# Transient OSD via swaync. -e keeps it out of the notification history; -p
+# prints the id which we stash and feed back with -r so repeated toggles
+# replace the popup instead of stacking it (same pattern as ddc-brightness).
+osd() {
+    local nid=""
+    [ -s "$STATE_DIR/notify-id" ] && nid=$(<"$STATE_DIR/notify-id")
+    notify-send -p -e -t 2000 ${nid:+-r "$nid"} "$1" > "$STATE_DIR/notify-id" 2>/dev/null || true
+}
+
+die() {
+    notify-send -e -t 3000 -u critical "Display mode" "$1" 2>/dev/null || true
+    echo "niri-display-mode: $1" >&2
+    exit 1
+}
+
+# Resolve our monitor's current connector name and physical mode width in one
+# query: "<connector> <width>". Width is the state signal — 2560 ⇒ game mode.
+read -r OUTPUT CUR_WIDTH < <(
+    niri msg --json outputs | jq -r --arg m "$MODEL" '
+        to_entries[] | select(.value.model == $m)
+        | "\(.key) \(.value.modes[.value.current_mode].width)"'
+) || true
+
+[ -n "${OUTPUT:-}" ] || die "monitor \"$MODEL\" not found in niri outputs"
+
+# Three IPC calls per switch (niri applies one output action at a time); a brief
+# intermediate state during the swap is harmless for a deliberate toggle.
+apply_game() {
+    niri msg output "$OUTPUT" mode "$GAME_MODE"
+    niri msg output "$OUTPUT" scale "$GAME_SCALE"
+    niri msg output "$OUTPUT" vrr on
+    osd "Game mode · 1440p · 120 Hz · VRR on"
+}
+
+apply_desktop() {
+    niri msg output "$OUTPUT" mode "$DESKTOP_MODE"
+    niri msg output "$OUTPUT" scale "$DESKTOP_SCALE"
+    niri msg output "$OUTPUT" vrr off
+    osd "Desktop mode · 4K · 120 Hz"
+}
+
+case "${1:-toggle}" in
+    game)    apply_game ;;
+    desktop) apply_desktop ;;
+    toggle)  if [ "${CUR_WIDTH:-0}" = "2560" ]; then apply_desktop; else apply_game; fi ;;
+    status)  if [ "${CUR_WIDTH:-0}" = "2560" ]; then echo game; else echo desktop; fi ;;
+    *) echo "usage: niri-display-mode [toggle|game|desktop|status]" >&2; exit 2 ;;
+esac
