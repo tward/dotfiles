@@ -581,6 +581,10 @@ binds {
     // resolution for fullscreen games without reflowing the desktop. repeat=false
     // so key auto-repeat can't double-toggle. See scripts/niri-display-mode.
     Mod+G repeat=false hotkey-overlay-title="Toggle game display mode: 1440p/4K" { spawn-sh "$HOME/.local/bin/niri-display-mode toggle"; }
+    // Display-settings menu (fuzzel): pick a resolution/refresh/scale profile or
+    // toggle VRR. The only place these are exposed in our niri setup; same script
+    // backs the Mod+G toggle and the waybar module. See scripts/niri-display-mode.
+    Mod+Shift+G repeat=false hotkey-overlay-title="Display settings menu (fuzzel)" { spawn-sh "$HOME/.local/bin/niri-display-mode menu"; }
     // Pin/unpin the focused floating window so it follows you across workspaces
     // (e.g. the mpv PiP). Calls niri-float-sticky's IPC client; the daemon itself is
     // started via spawn-sh-at-startup above. spawn-sh so $HOME expands.

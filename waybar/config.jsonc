@@ -13,7 +13,7 @@
 
     "modules-left": ["niri/workspaces", "niri/window"],
     "modules-center": ["custom/notification", "clock"],
-    "modules-right": ["mpris", "cpu", "memory", "temperature", "pulseaudio", "network", "tray", "custom/power"],
+    "modules-right": ["mpris", "cpu", "memory", "temperature", "pulseaudio", "network", "custom/display", "tray", "custom/power"],
 
     "niri/workspaces": { "format": "{value}" },
     "niri/window": { "format": "{title}", "max-length": 60 },
@@ -82,6 +82,21 @@
         "on-click": "swaync-client -t -sw",
         "on-click-right": "swaync-client -d -sw",
         "escape": true
+    },
+
+    // Current display profile (4K / 1440p / 1080p). Left-click toggles game
+    // mode, right-click opens the fuzzel display menu; both via niri-display-mode.
+    // Absolute $HOME path because niri-spawned waybar lacks ~/.local/bin on PATH.
+    // The script pings SIGRTMIN+8 after a change for an instant refresh; interval
+    // is just a slow safety re-poll.
+    "custom/display": {
+        "format": "<span size='xx-large'>󰍹</span> <span rise='2500'>{}</span>",
+        "return-type": "json",
+        "exec": "$HOME/.local/bin/niri-display-mode waybar",
+        "interval": 30,
+        "signal": 8,
+        "on-click": "$HOME/.local/bin/niri-display-mode toggle",
+        "on-click-right": "$HOME/.local/bin/niri-display-mode menu"
     },
 
     "custom/power": {
