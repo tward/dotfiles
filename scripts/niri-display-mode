@@ -105,8 +105,10 @@ menu() {
     local vstate="off"; [ "$CUR_VRR" = "true" ] && vstate="on"
     local vrr_label="Toggle VRR  (now: ${vstate})"
 
+    # --width is in characters; fuzzel doesn't auto-size, so size it to the
+    # longest profile label (~38 chars) plus padding or the labels get clipped.
     choice=$(printf '%s\n' "${labels[@]}" "$vrr_label" |
-        fuzzel --dmenu --prompt "Display  ") || exit 0
+        fuzzel --dmenu --width 48 --prompt "Display  ") || exit 0
     [ -n "$choice" ] || exit 0
 
     if [ "$choice" = "$vrr_label" ]; then
