@@ -513,6 +513,17 @@ window-rule {
     open-on-workspace "play"
 }
 
+// Full-width apps: open at 100% of the working area instead of the global
+// default-column-width (proportion 0.5). These are matched separately from the
+// workspace-assignment rules above so the apps they're grouped with (Obsidian,
+// Slack, Discord) keep the half-width default.
+window-rule {
+    match app-id=r#"^gitkraken$"#
+    match app-id=r#"^thunderbird_thunderbird$"#
+    match app-id=r#"^net\.lutris\.Lutris$"#
+    default-column-width { proportion 1.0; }
+}
+
 // Web apps → "ops": Vercel + Supabase Studio (Brave PWAs).
 // Matched on the PWA app-id HASH only, not the full app_id: the live app_id is
 // brave-<hash>-<profile> (e.g. ...-Profile_1). The hash is the stable,
