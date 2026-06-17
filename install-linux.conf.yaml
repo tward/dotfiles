@@ -29,6 +29,7 @@
     ~/.local/bin/niri-polkit-agent: scripts/niri-polkit-agent
     ~/.local/bin/brave-profile: scripts/brave-profile
     ~/.local/bin/flatpak-kill-menu: scripts/flatpak-kill-menu
+    ~/.local/bin/niri-quit-window: scripts/niri-quit-window
     ~/.local/bin/ddc-brightness: scripts/ddc-brightness
     ~/.local/bin/niri-display-mode: scripts/niri-display-mode
 

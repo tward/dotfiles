@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#
+# niri-quit-window — "quit, then close" for the focused window. Bound to Mod+Q.
+#
+# Sends Ctrl+Q (the de-facto "quit" shortcut for GUI apps) to the focused window
+# via wtype, then watches niri's window list. If the app honours it and the
+# window disappears, we're done — a clean app-level quit. If the window is still
+# there after a short grace period, we fall back to niri's plain close-window.
+#
+# Why: niri's close-window only destroys the surface; GUI Flatpaks like Bitwig
+# treat that as "hide" and leave their process (JVM + audio engine, 8+ GB)
+# resident, sometimes erroring because they weren't quit the way they expect.
+# Ctrl+Q gives them the real quit path first; close-window is the safety net.
+# For a Flatpak that ignores Ctrl+Q entirely, Mod+Shift+Q (flatpak-kill-menu)
+# is still the hard, RAM-reclaiming kill.
+#
+# Requires: wtype (virtual-keyboard input; niri implements
+# zwp_virtual_keyboard_manager_v1) and jq.
+
+set -uo pipefail
+
+# Grace period before forcing close-window = ATTEMPTS × SLEEP ≈ 600 ms.
+# Heuristic, not derived: cooperating apps drop their window within a few
+# hundred ms. This is the delay an app that ignores Ctrl+Q (e.g. a terminal,
+# where Ctrl+Q is XON flow-control) pays before its window is closed anyway —
+# raise ATTEMPTS if a slow-quitting app gets force-closed, lower it if the
+# delay on non-quitting apps annoys.
+ATTEMPTS=12
+SLEEP=0.05
+
+id=$(niri msg --json focused-window 2>/dev/null | jq -r '.id // empty')
+[ -n "$id" ] || exit 0   # nothing focused — nothing to quit
+
+# Hold Ctrl, tap q, release Ctrl. wtype targets whatever niri currently focuses,
+# which is the window we just read above.
+wtype -M ctrl -k q -m ctrl 2>/dev/null
+
+# Poll the window list; bail the moment our window id is gone (clean quit).
+for ((i = 0; i < ATTEMPTS; i++)); do
+    sleep "$SLEEP"
+    if ! niri msg --json windows 2>/dev/null |
+        jq -e --argjson id "$id" 'any(.[]; .id == $id)' >/dev/null; then
+        exit 0
+    fi
+done
+
+# Still there: the app didn't honour Ctrl+Q. Close the window as before, by id so
+# a popup that stole focus in the meantime can't misdirect the close.
+exec niri msg action close-window --id "$id"

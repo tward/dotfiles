@@ -635,11 +635,16 @@ binds {
     // XF86LaunchA. Bound here to match macOS Mission Control = niri overview.
     XF86LaunchA repeat=false { toggle-overview; }
 
-    Mod+Q repeat=false { close-window; }
-    // Mod+Q only closes a window; GUI Flatpaks like Bitwig keep their processes
-    // (JVM, separate audio engine — 8+ GB) resident afterwards. This opens a
-    // fuzzel picker of every running Flatpak and sends the chosen one SIGTERM for
-    // a real, RAM-reclaiming quit. spawn-sh so $HOME expands to the script path.
+    // "Quit, then close": send Ctrl+Q (the app's real quit path) to the focused
+    // window, poll niri's window list, and only fall back to close-window if the
+    // app ignores it. Plain close-window destroyed the surface but left GUI
+    // Flatpaks like Bitwig (JVM + audio engine, 8+ GB) resident and sometimes
+    // erroring, because they weren't quit the way they expect. spawn-sh so $HOME
+    // expands to the script path.
+    Mod+Q repeat=false { spawn-sh "$HOME/.local/bin/niri-quit-window"; }
+    // Mod+Shift+Q opens a fuzzel picker of every running Flatpak and sends the
+    // chosen one SIGTERM — the hard, RAM-reclaiming kill for a Flatpak that
+    // ignores Ctrl+Q above. spawn-sh so $HOME expands to the script path.
     Mod+Shift+Q repeat=false hotkey-overlay-title="Kill a running Flatpak (fuzzel)" { spawn-sh "$HOME/.local/bin/flatpak-kill-menu"; }
 
     Mod+Left  { focus-column-left; }

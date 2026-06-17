@@ -154,6 +154,7 @@ APT_PACKAGES=(
   mpv             # media player; plays YouTube URLs via yt-dlp, floated by a niri window-rule
   mpv-mpris       # MPRIS plugin (auto-loads from /etc/mpv/scripts) so playerctld/waybar/media keys sense mpv
   wl-clipboard    # wl-paste/wl-copy; used by the Mod+Y "play clipboard URL in mpv" niri bind
+  wtype           # virtual-keyboard input; Mod+Q (scripts/niri-quit-window) sends Ctrl+Q to quit apps
   swaybg          # wallpaper for the niri session (see niri/config.kdl)
 
   # niri desktop — bar & now-playing. Configs live in the repo (waybar/,
