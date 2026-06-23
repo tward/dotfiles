@@ -496,7 +496,7 @@ window-rule {
 window-rule {
     match app-id=r#"^slack$"#
     match app-id=r#"^discord$"#
-    match app-id=r#"^thunderbird_thunderbird$"#
+    match app-id=r#"^org\.mozilla\.thunderbird_esr$"#
     open-on-workspace "coms"
 }
 
@@ -519,7 +519,7 @@ window-rule {
 // Slack, Discord) keep the half-width default.
 window-rule {
     match app-id=r#"^gitkraken$"#
-    match app-id=r#"^thunderbird_thunderbird$"#
+    match app-id=r#"^org\.mozilla\.thunderbird_esr$"#
     match app-id=r#"^net\.lutris\.Lutris$"#
     default-column-width { proportion 1.0; }
 }
