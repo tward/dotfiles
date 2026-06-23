@@ -524,7 +524,7 @@ window-rule {
     default-column-width { proportion 1.0; }
 }
 
-// Web apps → "ops": Vercel + Supabase Studio (Brave PWAs).
+// Web apps → "ops": Vercel + Supabase Studio + GitHub (Brave PWAs).
 // Matched on the PWA app-id HASH only, not the full app_id: the live app_id is
 // brave-<hash>-<profile> (e.g. ...-Profile_1). The hash is the stable,
 // collision-free part (the same convention niri-raise-or-launch relies on), so
@@ -534,6 +534,8 @@ window-rule {
     match app-id=r#"^brave-kjadmedhkblcgnokefifbpcmdjagkefo"#
     // Supabase Studio
     match app-id=r#"^brave-ghjmbgleacbfjnbmindaeipamojehijb"#
+    // GitHub
+    match app-id=r#"^brave-mjoklplbddabcmpepnokjaffbmgbkkgg"#
     open-on-workspace "ops"
 }
 
