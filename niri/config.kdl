@@ -870,6 +870,12 @@ binds {
     Ctrl+Print { screenshot-screen; }
     Alt+Print { screenshot-window; }
 
+    // Mod+S mirrors the Print* screenshots for keyboards without a PrintScreen key.
+    // Both sets stay live, so a future remapped Print key keeps working too.
+    Mod+S      hotkey-overlay-title="Screenshot: drag to select area" { screenshot; }
+    Mod+Ctrl+S hotkey-overlay-title="Screenshot: whole screen" { screenshot-screen; }
+    Mod+Alt+S  hotkey-overlay-title="Screenshot: focused window" { screenshot-window; }
+
     // Applications such as remote-desktop clients and software KVM switches may
     // request that niri stops processing the keyboard shortcuts defined here
     // so they may, for example, forward the key presses as-is to a remote machine.
