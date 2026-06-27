@@ -202,6 +202,21 @@ cfg_bookmark() {
   ensure_user_line "file:///mnt/common Common" "$user_home/.config/gtk-3.0/bookmarks"
 }
 
+# Pull the desktop wallpaper from Common to where niri's swaybg expects it
+# (~/Pictures/wallpaper.png). The image is deliberately untracked in the repo
+# (2.2 MB binary); it's stashed at /mnt/common/backup/wallpapers/. No-op if Common
+# isn't mounted or the source is missing.
+cfg_wallpaper() {
+  local src=/mnt/common/backup/wallpapers/wallpaper.png
+  if [[ -f "$src" ]]; then
+    as_user mkdir -p "$user_home/Pictures"
+    as_user cp -f "$src" "$user_home/Pictures/wallpaper.png"
+    echo "  Pulled wallpaper -> $user_home/Pictures/wallpaper.png"
+  else
+    echo "  note: $src not found (Common mounted?); skipping wallpaper."
+  fi
+}
+
 # Dark mode default via a dconf SYSTEM default (NOT `gsettings set`, which needs a
 # live D-Bus session that doesn't exist in an install chroot). dconf system defaults
 # compile with `dconf update` (no session) and are read at each login. They are
@@ -244,6 +259,7 @@ step "Register kitty.desktop (backstop)" cfg_kitty
 step "Set default login shell to zsh" cfg_shell
 step "Set niri as the default GDM session" cfg_session
 step "Ensure GTK bookmark for /mnt/common" cfg_bookmark
+step "Pull wallpaper from Common" cfg_wallpaper
 step "Set dark mode as the GNOME/GTK default" cfg_dark_mode
 step "Run dotbot (symlink dotfiles)" cfg_dotbot
 
