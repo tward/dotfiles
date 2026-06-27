@@ -35,4 +35,4 @@
 
 - shell:
     - ["test -d ~/.config/tmux/plugins/tpm || git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm", Installing TPM]
-    - ["~/.config/tmux/plugins/tpm/bin/install_plugins", Installing tmux plugins]
+    - ["~/.config/tmux/plugins/tpm/bin/install_plugins || true", Installing tmux plugins]
