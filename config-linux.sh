@@ -222,6 +222,14 @@ cfg_wallpaper() {
 # compile with `dconf update` (no session) and are read at each login. They are
 # defaults, not locks — the user can flip the theme later and their choice (user-db)
 # layers above this system-db value.
+#
+# gtk-theme is plain 'Adwaita', NOT 'Adwaita-dark'. The standalone Adwaita-dark theme
+# dir ships only via gnome-themes-extra — installed by default on Ubuntu, but GONE from
+# Fedora (the package was dropped; modern replacement is adw-gtk3-theme). So naming
+# 'Adwaita-dark' is a dangling reference on Fedora and GTK3 silently falls back to LIGHT
+# Adwaita. 'Adwaita' always resolves — it's compiled into libgtk-3 as a gresource
+# (/org/gtk/libgtk/theme/Adwaita/{gtk,gtk-dark}.css), no theme package required. The
+# dark variant then comes from prefer-dark, not from a separately-named theme.
 cfg_dark_mode() {
   mkdir -p /etc/dconf/profile /etc/dconf/db/local.d
   local profile=/etc/dconf/profile/user
@@ -234,9 +242,31 @@ cfg_dark_mode() {
 # Default to dark; user choices (user-db) override these.
 [org/gnome/desktop/interface]
 color-scheme='prefer-dark'
-gtk-theme='Adwaita-dark'
+gtk-theme='Adwaita'
 EOF
   dconf update 2>/dev/null || echo "  note: dconf update failed; dark mode applies once dconf can compile the db."
+
+  # GTK3 keyfile fallback for sessions with NO settings daemon (niri). The dconf default
+  # above is bridged into GtkSettings only by gnome-settings-daemon (a real GNOME login)
+  # via XSETTINGS; a bare niri session runs no such daemon, so non-sandboxed GTK3 apps
+  # never see prefer-dark and render light. settings.ini IS read directly by GTK3 in
+  # every session, so it's the reliable place for the dark preference under niri. Note
+  # gtk-application-prefer-dark-theme is a GtkSettings keyfile property, NOT a gsettings
+  # key — it cannot live in dconf, which is the gap the dconf-only approach left open.
+  # Written as a backstop (only when absent) so a user who flips to light isn't clobbered
+  # on re-run — the keyfile analogue of the dconf "default, not lock" layering above.
+  local gtk3_ini="$user_home/.config/gtk-3.0/settings.ini"
+  if [[ -f "$gtk3_ini" ]]; then
+    echo "  $gtk3_ini exists; leaving GTK3 theme prefs untouched."
+  else
+    as_user mkdir -p "$user_home/.config/gtk-3.0"
+    as_user tee "$gtk3_ini" >/dev/null <<'EOF'
+[Settings]
+gtk-application-prefer-dark-theme=1
+gtk-theme-name=Adwaita
+EOF
+    echo "  Wrote $gtk3_ini (built-in Adwaita dark)."
+  fi
 }
 
 # Run dotbot LAST (as the target user). Same setup as ./install's Linux path
