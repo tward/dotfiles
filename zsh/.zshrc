@@ -66,6 +66,7 @@ zsh_add_plugin "zsh-users/zsh-syntax-highlighting" # Must be last
 
 zsh_add_config "config/vim-mode.sh"
 zsh_add_config "config/exports.sh"
+zsh_add_config "config/fnm.sh"
 zsh_add_config "config/aliases.sh"
 zsh_add_config "config/fzf.sh"
 
