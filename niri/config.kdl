@@ -316,8 +316,12 @@ spawn-sh-at-startup "swaybg -i $HOME/Pictures/wallpaper.png -m fill"
 // to start them itself. All Wayland-native and distro-agnostic; the packages
 // (sway-notification-center, mate-polkit, swaylock, swayidle) are in install-linux.sh.
 //
-// Notification daemon + center (binary is "swaync"; apt package sway-notification-center):
-spawn-at-startup "swaync"
+// Notification daemon + center (binary is "swaync"; apt package sway-notification-center).
+// Launched via a respawn wrapper so a mid-session crash (e.g. the PulseAudio
+// sink-info segfault reached through the volume slider) is restarted; niri's own
+// spawn-at-startup does not respawn. swaync.service stays masked — see
+// install-linux.sh for why systemd's Restart= is the wrong fix here.
+spawn-sh-at-startup "$HOME/.local/bin/swaync-respawn"
 // Polkit authentication agent — renders the auth dialog for privileged actions
 // (mounting disks, nm-connection-editor, ...). The agent's path varies by distro,
 // so a launcher probes for it. See scripts/niri-polkit-agent.
@@ -499,7 +503,7 @@ window-rule {
 
 // Communications → "coms": Slack, Discord, Thunderbird.
 window-rule {
-    match app-id=r#"^slack$"#
+    match app-id=r#"^com\.slack\.Slack$"#
     match app-id=r#"^discord$"#
     match app-id=r#"^org\.mozilla\.thunderbird_esr$"#
     open-on-workspace "coms"

@@ -15,6 +15,7 @@
     ~/.config/kitty: kitty
     ~/.config/lazygit: lazygit
     ~/.config/swaync: swaync
+    ~/.config/pipewire: pipewire
     ~/.config/niri: niri
     ~/.config/fuzzel: fuzzel
     ~/.config/swaylock: swaylock
@@ -32,6 +33,7 @@
     ~/.local/bin/niri-quit-window: scripts/niri-quit-window
     ~/.local/bin/ddc-brightness: scripts/ddc-brightness
     ~/.local/bin/niri-display-mode: scripts/niri-display-mode
+    ~/.local/bin/swaync-respawn: scripts/swaync-respawn
 
 - shell:
     - ["test -d ~/.config/tmux/plugins/tpm || git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm", Installing TPM]

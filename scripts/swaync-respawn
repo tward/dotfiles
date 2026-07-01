@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Respawn swaync if it dies.
+#
+# swaync is started only from here (via niri spawn-at-startup), never from its
+# packaged systemd unit: install-linux.sh masks swaync.service because that unit
+# starts before niri's layer-shell is ready, exits 1, and its Restart=on-failure
+# then tight-loops a half-initialised daemon that can win the notifications bus
+# name and leave popups permanently broken. Launching from niri avoids that race,
+# but niri's spawn-at-startup does NOT restart a process that crashes later (e.g.
+# the PulseAudio sink-info segfault reached via the volume slider). This wrapper
+# adds just that restart, with a rate-limit so a genuinely broken swaync can't
+# sit in a coredump-spamming loop.
+set -u
+
+max_fast_failures=5   # give up after this many crashes...
+min_uptime=30         # ...that each ran for fewer than this many seconds
+
+failures=0
+while true; do
+    started=$SECONDS
+    swaync
+    status=$?
+
+    # A clean exit (0) is intentional (deliberate shutdown); stop respawning.
+    (( status == 0 )) && break
+
+    if (( SECONDS - started >= min_uptime )); then
+        # Ran long enough to be "healthy" before dying — reset the budget.
+        failures=0
+    else
+        (( failures++ ))
+    fi
+
+    if (( failures >= max_fast_failures )); then
+        echo "swaync-respawn: swaync crashed ${failures}x in quick succession; giving up." >&2
+        break
+    fi
+
+    sleep 2
+done
