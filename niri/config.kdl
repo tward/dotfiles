@@ -6,6 +6,11 @@
 // Environment configuration
 environment {
     SAL_USE_VCLPLUGIN "gtk3"
+    // Route Qt apps through the gtk3 platform theme so they read the same GTK dark
+    // config as everything else (prefer-dark in gtk-3.0/settings.ini). Qt 6.5+ can read
+    // the portal's color-scheme but won't build a dark palette from it on its own in a
+    // bare niri session; the gtk3 theme does, and needs no portal running to do it.
+    QT_QPA_PLATFORMTHEME "gtk3"
 }
 
 // Input device configuration.

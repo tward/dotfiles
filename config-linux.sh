@@ -246,27 +246,33 @@ gtk-theme='Adwaita'
 EOF
   dconf update 2>/dev/null || echo "  note: dconf update failed; dark mode applies once dconf can compile the db."
 
-  # GTK3 keyfile fallback for sessions with NO settings daemon (niri). The dconf default
-  # above is bridged into GtkSettings only by gnome-settings-daemon (a real GNOME login)
-  # via XSETTINGS; a bare niri session runs no such daemon, so non-sandboxed GTK3 apps
-  # never see prefer-dark and render light. settings.ini IS read directly by GTK3 in
+  # GTK3/GTK4 keyfile fallback for sessions with NO settings daemon (niri). The dconf
+  # default above is bridged into GtkSettings only by gnome-settings-daemon (a real GNOME
+  # login) via XSETTINGS; a bare niri session runs no such daemon, so non-sandboxed GTK
+  # apps never see prefer-dark and render light. settings.ini IS read directly by GTK in
   # every session, so it's the reliable place for the dark preference under niri. Note
   # gtk-application-prefer-dark-theme is a GtkSettings keyfile property, NOT a gsettings
   # key — it cannot live in dconf, which is the gap the dconf-only approach left open.
-  # Written as a backstop (only when absent) so a user who flips to light isn't clobbered
-  # on re-run — the keyfile analogue of the dconf "default, not lock" layering above.
-  local gtk3_ini="$user_home/.config/gtk-3.0/settings.ini"
-  if [[ -f "$gtk3_ini" ]]; then
-    echo "  $gtk3_ini exists; leaving GTK3 theme prefs untouched."
-  else
-    as_user mkdir -p "$user_home/.config/gtk-3.0"
-    as_user tee "$gtk3_ini" >/dev/null <<'EOF'
+  # GTK3 and GTK4 read SEPARATE keyfiles (gtk-3.0/ vs gtk-4.0/): Fedora's pavucontrol 6.x
+  # is GTK4 (gtkmm-4) and, being plain GTK4 not libadwaita, still keys its dark variant off
+  # this same property — so gtk-4.0/ needs the file too or it renders light. Written as a
+  # backstop (only when absent) so a user who flips to light isn't clobbered on re-run —
+  # the keyfile analogue of the dconf "default, not lock" layering above.
+  local gtk_ver gtk_ini
+  for gtk_ver in 3.0 4.0; do
+    gtk_ini="$user_home/.config/gtk-$gtk_ver/settings.ini"
+    if [[ -f "$gtk_ini" ]]; then
+      echo "  $gtk_ini exists; leaving GTK theme prefs untouched."
+    else
+      as_user mkdir -p "$user_home/.config/gtk-$gtk_ver"
+      as_user tee "$gtk_ini" >/dev/null <<'EOF'
 [Settings]
 gtk-application-prefer-dark-theme=1
 gtk-theme-name=Adwaita
 EOF
-    echo "  Wrote $gtk3_ini (built-in Adwaita dark)."
-  fi
+      echo "  Wrote $gtk_ini (built-in Adwaita dark)."
+    fi
+  done
 }
 
 # Run dotbot LAST (as the target user). Same setup as ./install's Linux path
