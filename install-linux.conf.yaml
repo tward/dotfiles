@@ -16,6 +16,7 @@
     ~/.config/lazygit: lazygit
     ~/.config/swaync: swaync
     ~/.config/pipewire: pipewire
+    ~/.config/wireplumber: wireplumber
     ~/.config/niri: niri
     ~/.config/fuzzel: fuzzel
     ~/.config/swaylock: swaylock
