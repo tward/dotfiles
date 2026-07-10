@@ -4,6 +4,8 @@
 
 # Build PATH once (last entry has highest priority)
 path=(
+  $HOME/.opencode/bin # opencode installer hardcodes this dir; not relocatable to .local
+  $HOME/.cargo/bin    # rustup proxies; installed --no-modify-path, so PATH is owned here
   $HOME/.local/scripts
   $HOME/.local/bin
   $HOME/.bin
