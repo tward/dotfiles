@@ -27,6 +27,10 @@ zle-line-init() {
 }
 
 zle -N zle-line-init
-echo -ne '\e[5 q' # Use beam shape cursor on startup.
+# Use beam shape cursor on startup — only when stdout is a terminal. A bare emit
+# prefixes the first stdout line of any `zsh -ic '...' > file` capture with the
+# escape (no trailing newline), which corrupts tools that parse that output
+# line-exactly (e.g. rimz's agent launch probe).
+[[ -t 1 ]] && echo -ne '\e[5 q'
 
-preexec() { echo -ne '\e[5 q' ;} # Use beam shape cursor for each new prompt.
+preexec() { [[ -t 1 ]] && echo -ne '\e[5 q' ;} # Use beam shape cursor for each new prompt.
