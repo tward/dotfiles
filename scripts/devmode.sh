@@ -52,6 +52,18 @@ is_running() {
   pgrep -x "$1" &>/dev/null
 }
 
+# Run a step that is allowed to fail without aborting the toggle.
+#
+# `set -e` means any non-zero exit kills the script mid-way, which leaves
+# devmode half-applied and unrecoverable — e.g. `yabai --stop-service` exits
+# 113 when the launchd service is not loaded, which used to abort `off` before
+# skhd/sketchybar were stopped or any defaults were restored.
+try() {
+  if ! "$@"; then
+    echo "  warning: '$*' failed (continuing)" >&2
+  fi
+}
+
 # Get the current menu bar auto-hide setting via defaults (for state capture)
 get_menu_bar_setting() {
   local val
@@ -73,7 +85,7 @@ set_stage_manager() {
 
   # Only toggle if current state doesn't match desired
   if [[ "$desired" == "off" && "$current" == "1" ]] || [[ "$desired" == "on" && "$current" == "0" ]]; then
-    open "x-apple.systempreferences:com.apple.Desktop-Settings"
+    try open "x-apple.systempreferences:com.apple.Desktop-Settings"
     sleep 1
     osascript -e '
       tell application "System Settings" to activate
@@ -83,7 +95,7 @@ set_stage_manager() {
           click checkbox "Stage Manager" of group 5 of scroll area 1 of group 1 of group 3 of splitter group 1 of group 1 of window "Desktop & Dock"
         end tell
       end tell
-    ' 2>/dev/null
+    ' 2>/dev/null || true
     sleep 3
     osascript -e 'tell application "System Settings" to quit' 2>/dev/null || true
     sleep 1
@@ -101,7 +113,7 @@ set_menu_bar() {
     return
   fi
 
-  open "x-apple.systempreferences:com.apple.ControlCenter-Settings.extension"
+  try open "x-apple.systempreferences:com.apple.ControlCenter-Settings.extension"
   sleep 1
   osascript -e "
     tell application \"System Settings\" to activate
@@ -121,7 +133,7 @@ set_menu_bar() {
         end repeat
       end tell
     end tell
-  " 2>/dev/null
+  " 2>/dev/null || true
   sleep 3
   osascript -e 'tell application "System Settings" to quit' 2>/dev/null || true
   sleep 1
@@ -181,12 +193,12 @@ restore_default() {
     defaults delete "$domain" "$key" 2>/dev/null || true
   elif [[ "$type" == "bool" ]]; then
     if [[ "$val" == "1" || "$val" == "true" ]]; then
-      defaults write "$domain" "$key" -bool true
+      try defaults write "$domain" "$key" -bool true
     else
-      defaults write "$domain" "$key" -bool false
+      try defaults write "$domain" "$key" -bool false
     fi
   else
-    defaults write "$domain" "$key" "-$type" "$val"
+    try defaults write "$domain" "$key" "-$type" "$val"
   fi
 }
 
@@ -200,9 +212,9 @@ start() {
   set_stage_manager off
   set_menu_bar "Always"
 
-  yabai --start-service
-  skhd --start-service
-  brew services start sketchybar
+  try yabai --start-service
+  try skhd --start-service
+  try brew services start sketchybar
 
   # Cosmetic: hide Dock, fast key repeat
   defaults write NSGlobalDomain KeyRepeat -int 2
@@ -227,9 +239,9 @@ start() {
 stop() {
   echo "==> Stopping developer mode..."
 
-  yabai --stop-service
-  skhd --stop-service
-  brew services stop sketchybar
+  try yabai --stop-service
+  try skhd --stop-service
+  try brew services stop sketchybar
 
   # Restore Stage Manager and menu bar via UI scripting
   local sm_was_on
