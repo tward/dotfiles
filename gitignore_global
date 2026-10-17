@@ -6,3 +6,4 @@ tags
 */**/.~lock*
 .irb_history
 settings.local.json
+**/.claude/.cc-writes/
