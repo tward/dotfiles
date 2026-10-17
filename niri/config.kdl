@@ -379,11 +379,13 @@ animations {
 // pinned to it via open-on-workspace. Note: a named workspace takes a leading
 // index slot on its monitor, so Mod+1 may now land here; pin it elsewhere with a
 // `workspace "daw" { open-on-output "DP-4" }` block if that's not what you want.
+workspace "play"
+workspace "daw"
 workspace "core"
 workspace "coms"
 workspace "ops"
-workspace "daw"
-workspace "play"
+
+spawn-at-startup "niri" "msg" "action" "focus-workspace" "core"
 
 // Window rules let you adjust behavior for individual windows.
 // Find more information on the wiki:
@@ -516,7 +518,6 @@ window-rule {
 
 // Core tools → "core": GitKraken, Obsidian.
 window-rule {
-    match app-id=r#"^gitkraken$"#
     match app-id=r#"^obsidian$"#
     open-on-workspace "core"
 }
@@ -544,6 +545,8 @@ window-rule {
 // collision-free part (the same convention niri-raise-or-launch relies on), so
 // anchoring ^brave-<hash> survives the PWA opening under a different Brave profile.
 window-rule {
+    // GitKraken
+    match app-id=r#"^gitkraken$"#
     // Vercel
     match app-id=r#"^brave-kjadmedhkblcgnokefifbpcmdjagkefo"#
     // Supabase Studio
