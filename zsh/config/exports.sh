@@ -42,9 +42,17 @@ export EDITOR=nvim
 export MANPAGER='nvim +Man!'
 
 # Mobile app
-export NODE_ENV=development
+# export NODE_ENV=development
 
 # Increase the function nesting limit to 100 or higher
 export FUNCNEST=100
 
 export COLORTERM=truecolor
+
+# Adopt the systemd user ssh-agent socket (Fedora ships all agent units disabled;
+# enabled per-machine via framework-install). Guarded so platforms that provide
+# their own agent — macOS launchd, Ubuntu's session unit, SSH agent forwarding —
+# keep theirs, and machines without the unit enabled are untouched.
+if [[ -z "$SSH_AUTH_SOCK" && -S "$XDG_RUNTIME_DIR/ssh-agent.socket" ]]; then
+  export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
+fi
