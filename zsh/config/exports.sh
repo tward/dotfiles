@@ -36,7 +36,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
 fi
 
 # You may need to manually set your language environment
-export LANG=en_GB.UTF-8
+export LANG=en_US.UTF-8
 
 export EDITOR=nvim
 export MANPAGER='nvim +Man!'
