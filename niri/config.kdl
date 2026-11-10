@@ -316,7 +316,13 @@ spawn-sh-at-startup "$HOME/.local/bin/niri-polkit-agent"
 // Idle: lock after 5 min, power off monitors 30s later (DPMS via niri), and lock
 // before sleep so the session is never unlocked on resume. -w serializes the
 // lock so resume can't race ahead of it.
-spawn-sh-at-startup "swayidle -w timeout 300 'swaylock -f' timeout 330 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'swaylock -f'"
+//
+// After 15 min idle (900 s), suspend if a battery is discharging. The check is
+// the battery's own status file, so it is a no-op on AC and on the desktop
+// (no BAT* device, the glob matches nothing and grep fails). It runs once per
+// idle period: a laptop unplugged after the 15 min mark stays awake until the
+// next activity resets the timer. 15 min is a chosen starting value, not derived.
+spawn-sh-at-startup "swayidle -w timeout 300 'swaylock -f' timeout 330 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' timeout 900 'grep -qx Discharging /sys/class/power_supply/BAT*/status 2>/dev/null && systemctl suspend' before-sleep 'swaylock -f'"
 
 // Sticky-floating daemon: lets a floating window follow you across workspaces
 // (niri has no native sticky — niri#932). Started with -disable-auto-stick so
