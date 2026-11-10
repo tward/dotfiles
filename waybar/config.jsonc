@@ -13,7 +13,7 @@
 
     "modules-left": ["niri/workspaces", "niri/window"],
     "modules-center": ["custom/notification", "clock"],
-    "modules-right": ["mpris", "cpu", "memory", "temperature", "pulseaudio", "network", "custom/display", "tray", "custom/power"],
+    "modules-right": ["mpris", "cpu", "memory", "temperature", "pulseaudio", "network", "battery", "custom/display", "tray", "custom/power"],
 
     "niri/workspaces": { "format": "{value}" },
     "niri/window": { "format": "{title}", "max-length": 60 },
@@ -57,6 +57,24 @@
         "format-ethernet": "wired",
         "format-disconnected": "󰖪 offline",
         "tooltip-format": "{ifname}: {ipaddr}"
+    },
+
+    // Laptop battery. Listed unconditionally: on a machine with no battery in
+    // /sys/class/power_supply waybar logs "No batteries." once and hides the
+    // module, so the desktop bar is unchanged. Icons are nf-md-battery_10..90,
+    // then full; charging swaps in nf-md-battery_charging.
+    "battery": {
+        "states": { "warning": 30, "critical": 15 },
+        "format": "{icon} <span rise='2500'>{capacity}%</span>",
+        "format-charging": "<span size='xx-large'>󰂄</span> <span rise='2500'>{capacity}%</span>",
+        "format-icons": [
+            "<span size='xx-large'>󰁺</span>", "<span size='xx-large'>󰁻</span>",
+            "<span size='xx-large'>󰁼</span>", "<span size='xx-large'>󰁽</span>",
+            "<span size='xx-large'>󰁾</span>", "<span size='xx-large'>󰁿</span>",
+            "<span size='xx-large'>󰂀</span>", "<span size='xx-large'>󰂁</span>",
+            "<span size='xx-large'>󰂂</span>", "<span size='xx-large'>󰁹</span>"
+        ],
+        "tooltip-format": "{capacity}% · {timeTo}"
     },
 
     "tray": { "spacing": 8 },
