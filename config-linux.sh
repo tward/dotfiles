@@ -11,9 +11,16 @@
 # already on the system. It is the single "configure everything" entry point and
 # ends by running dotbot.
 #
-# Runs AS ROOT against a target user:
-#   config-linux.sh <user>     # called by the installer with an explicit user
-#   sudo config-linux.sh       # human: target user is $SUDO_USER
+# Runs AS ROOT against a target user and machine type. BOTH arguments are
+# required (no $SUDO_USER or default-type fallback), so a by-hand re-run can never
+# silently apply the wrong machine's steps:
+#   config-linux.sh <user> <desktop|laptop>
+#
+# <type> gates only the root-level steps that can't be detected at runtime:
+#   desktop  external DDC/CI monitor and the shared Common partition (/mnt/common)
+#   laptop   built-in panel, battery, no Common partition
+# Everything in the user's session (brightness keys, waybar, niri outputs) detects
+# its hardware at runtime instead and is identical for both types.
 #
 # FAILURE MODEL: each config step is attempted independently. A failed step is
 # logged loudly and flagged, but the rest still run (so one bad step never skips
@@ -22,15 +29,26 @@
 
 set -uo pipefail   # deliberately NOT -e — per-step failure handling below
 
-# --- preflight (HARD: can't proceed without a valid target user) ------------
-if [[ $EUID -ne 0 ]]; then
-  echo "ERROR: must run as root (sudo config-linux.sh [user])." >&2
-  exit 1
+# --- preflight (HARD: nothing is applied unless every check here passes) -----
+usage="usage: config-linux.sh <user> <desktop|laptop>"
+if [[ $# -ne 2 ]]; then
+  echo "ERROR: expected exactly 2 arguments, got $#." >&2
+  echo "$usage" >&2
+  exit 2
 fi
+user="$1"
+machine_type="$2"
+case "$machine_type" in
+  desktop|laptop) ;;
+  *)
+    echo "ERROR: unknown machine type '$machine_type'." >&2
+    echo "$usage" >&2
+    exit 2
+    ;;
+esac
 
-user="${1:-${SUDO_USER:-}}"
-if [[ -z "$user" ]]; then
-  echo "ERROR: no target user. Pass one (config-linux.sh <user>) or run via sudo." >&2
+if [[ $EUID -ne 0 ]]; then
+  echo "ERROR: must run as root (sudo config-linux.sh <user> <desktop|laptop>)." >&2
   exit 1
 fi
 if ! getent passwd "$user" >/dev/null; then
@@ -288,14 +306,18 @@ cfg_dotbot() {
 }
 
 # --- run ---------------------------------------------------------------------
-echo "==> Configuring for user '$user' (home: $user_home)"
+echo "==> Configuring $machine_type for user '$user' (home: $user_home)"
 step "Mask packaged waybar/swaync user services" cfg_masks
-step "Enable i2c-dev + ddcutil udev access (DDC/CI brightness)" cfg_i2c_ddcutil
+if [[ "$machine_type" == desktop ]]; then
+  step "Enable i2c-dev + ddcutil udev access (DDC/CI brightness)" cfg_i2c_ddcutil
+fi
 step "Register kitty.desktop (backstop)" cfg_kitty
 step "Set default login shell to zsh" cfg_shell
 step "Set niri as the default GDM session" cfg_session
-step "Ensure GTK bookmark for /mnt/common" cfg_bookmark
-step "Pull wallpaper from Common" cfg_wallpaper
+if [[ "$machine_type" == desktop ]]; then
+  step "Ensure GTK bookmark for /mnt/common" cfg_bookmark
+  step "Pull wallpaper from Common" cfg_wallpaper
+fi
 step "Set dark mode as the GNOME/GTK default" cfg_dark_mode
 step "Run dotbot (symlink dotfiles)" cfg_dotbot
 
@@ -305,4 +327,4 @@ if [[ "$DEGRADED" -ne 0 ]]; then
   exit 1
 fi
 echo ""
-echo "Done. Configuration complete for user '$user'."
+echo "Done. Configuration complete for user '$user' ($machine_type)."
