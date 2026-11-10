@@ -35,6 +35,14 @@ if [[ "$(uname)" == "Darwin" ]]; then
   fi
 fi
 
+# Respect an explicit Android SDK location on Linux and leave macOS/hosts without an SDK untouched.
+# Bootstrap commands set their own environment; this is for interactive shells only.
+if [[ "$(uname)" == "Linux" && -d "${ANDROID_HOME:-$HOME/Android/Sdk}" ]]; then
+  export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
+  typeset -U path
+  path=("$ANDROID_HOME/platform-tools" "$ANDROID_HOME/emulator" "$ANDROID_HOME/cmdline-tools/latest/bin" $path)
+fi
+
 # You may need to manually set your language environment
 export LANG=en_US.UTF-8
 
