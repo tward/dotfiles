@@ -652,12 +652,13 @@ binds {
     XF86AudioPrev        allow-when-locked=true { spawn-sh "playerctl previous"; }
     XF86AudioNext        allow-when-locked=true { spawn-sh "playerctl next"; }
 
-    // Brightness keys (Keychron F1/F2 arrive as these keysyms). The display is
-    // an external monitor — no /sys/class/backlight device — so brightnessctl
-    // can't touch it; scripts/ddc-brightness steps it over DDC/CI (ddcutil)
-    // and shows an OSD popup. spawn-sh so $HOME expands to the script path.
-    XF86MonBrightnessUp allow-when-locked=true { spawn-sh "$HOME/.local/bin/ddc-brightness up"; }
-    XF86MonBrightnessDown allow-when-locked=true { spawn-sh "$HOME/.local/bin/ddc-brightness down"; }
+    // Brightness keys (Keychron F1/F2 arrive as these keysyms). scripts/brightness
+    // picks the mechanism at runtime: brightnessctl when the machine has a
+    // /sys/class/backlight device (laptop panel), otherwise scripts/ddc-brightness
+    // over DDC/CI for the external monitor. Both show an OSD popup. spawn-sh so
+    // $HOME expands to the script path.
+    XF86MonBrightnessUp allow-when-locked=true { spawn-sh "$HOME/.local/bin/brightness up"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn-sh "$HOME/.local/bin/brightness down"; }
 
     // Open/close the Overview: a zoomed-out view of workspaces and windows.
     // You can also move the mouse into the top-left hot corner,

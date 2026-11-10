@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
 # ddc-brightness — step external-monitor brightness up/down over DDC/CI
-# (ddcutil), with an instant OSD popup via notify-send/swaync. Bound to the
-# XF86MonBrightness* keys in niri/config.kdl.
+# (ddcutil), with an instant OSD popup via notify-send/swaync. Reached from the
+# XF86MonBrightness* keys in niri/config.kdl through scripts/brightness, which
+# dispatches here when the machine has no backlight device.
 #
 # Why this exists: the only display is an external monitor, which has no
 # /sys/class/backlight device, so brightnessctl can't touch it. Brightness

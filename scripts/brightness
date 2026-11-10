@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+#
+# brightness — the one entry point for the XF86MonBrightness* keys in
+# niri/config.kdl. Picks the mechanism from the hardware at runtime, so the
+# same bind works on every machine:
+#
+#   - a kernel backlight device exists (laptop panel) -> brightnessctl
+#   - none (desktop: external monitor only)           -> ddc-brightness (DDC/CI)
+#
+# Detection is /sys/class/backlight: a built-in panel registers a device
+# there, an external monitor never does. No machine-type flag is involved.
+#
+# brightnessctl needs no group membership or udev rule on Fedora: the package
+# ships only the binary and sets brightness through systemd-logind, which
+# allows it for the active local session.
+
+set -euo pipefail
+
+STEP=10   # percentage points per key press, same as ddc-brightness
+MIN=1     # percent floor: 0 switches some panels' backlight off entirely
+
+case "${1:-}" in
+    up|down) ;;
+    *) echo "usage: brightness up|down" >&2; exit 2 ;;
+esac
+
+shopt -s nullglob
+backlights=(/sys/class/backlight/*)
+if (( ${#backlights[@]} == 0 )); then
+    # Resolve through the ~/.local/bin symlink to the sibling script in the repo.
+    exec "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/ddc-brightness" "$1"
+fi
+
+STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/brightness"
+mkdir -p "$STATE_DIR"
+
+die() {
+    notify-send -e -t 3000 -u critical "Brightness" "$1" 2>/dev/null || true
+    exit 1
+}
+
+# Serialize key auto-repeat so presses queue instead of racing the
+# read-modify-write below.
+exec 9>"$STATE_DIR/lock"
+flock 9
+
+# -m prints "device,class,current,percent%,max"; field 4 is the level.
+cur=$(brightnessctl -c backlight -m | cut -d, -f4 | tr -d '%') ||
+    die "brightnessctl could not read the backlight"
+[[ "$cur" =~ ^[0-9]+$ ]] || die "could not parse brightness from brightnessctl"
+
+case "$1" in
+    up)   new=$(( cur + STEP )) ;;
+    down) new=$(( cur - STEP )) ;;
+esac
+(( new > 100 )) && new=100
+(( new < MIN )) && new=$MIN
+
+# Same OSD pattern as ddc-brightness: transient, replaces the previous popup,
+# int:value renders swaync's progress bar.
+nid=""
+[ -s "$STATE_DIR/notify-id" ] && nid=$(<"$STATE_DIR/notify-id")
+notify-send -p -e -t 1500 ${nid:+-r "$nid"} \
+    -h int:value:"$new" "Brightness ${new}%" > "$STATE_DIR/notify-id" || true
+
+brightnessctl -c backlight -q set "${new}%" || die "brightnessctl set failed"
