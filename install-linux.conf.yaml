@@ -35,6 +35,13 @@
     ~/.local/bin/ddc-brightness: scripts/ddc-brightness
     ~/.local/bin/niri-display-mode: scripts/niri-display-mode
     ~/.local/bin/swaync-respawn: scripts/swaync-respawn
+    # Wallpaper for niri's swaybg (see niri/config.kdl). force: machines set up
+    # before the image was tracked hold a real copy here, which a plain link
+    # refuses to replace.
+    ~/Pictures/wallpaper.png:
+        path: wallpaper/wallpaper.png
+        create: true
+        force: true
 
 - shell:
     - ["test -d ~/.config/tmux/plugins/tpm || git clone https://github.com/tmux-plugins/tpm ~/.config/tmux/plugins/tpm", Installing TPM]

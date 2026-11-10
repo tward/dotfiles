@@ -309,9 +309,11 @@ layout {
 // ever starts from this line. To undo: systemctl --user unmask waybar.service
 spawn-at-startup "waybar"
 
-// Set the desktop wallpaper. The image is not tracked in dotfiles; place it at
-// ~/Pictures/wallpaper.png. spawn-sh is used so $HOME expands (plain spawn does not).
-spawn-sh-at-startup "swaybg -i $HOME/Pictures/wallpaper.png -m fill"
+// Set the desktop wallpaper. ~/Pictures/wallpaper.png is a dotbot symlink to
+// wallpaper/wallpaper.png in the dotfiles repo. If it is missing (or the link is
+// dangling) fall back to a solid Nord background so startup never errors.
+// spawn-sh is used so $HOME expands (plain spawn does not).
+spawn-sh-at-startup "if [ -f $HOME/Pictures/wallpaper.png ]; then exec swaybg -i $HOME/Pictures/wallpaper.png -m fill; else exec swaybg -c '#2e3440'; fi"
 
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
