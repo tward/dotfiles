@@ -3,15 +3,17 @@
 # wifi-menu — fuzzel picker for joining Wi-Fi networks from the niri session,
 # over nmcli. Opened by clicking the waybar network module (waybar/config.jsonc).
 #
-#   wifi-menu           open the picker from NetworkManager's cached scan
-#   wifi-menu rescan    scan first (with a "Scanning…" popup), then open
-#   wifi-menu list      print the menu lines and exit (no UI; for checking by hand)
+#   wifi-menu           scan (with a "Scanning…" popup), then open the picker
+#   wifi-menu rescan    same, but force a new scan even if one just finished
+#   wifi-menu list      print the menu lines from the cached scan and exit
+#                       (no UI, no scan; for checking by hand)
 #
-# The picker opens from the cached scan because a fresh one blocks for several
-# seconds (about 10 s on the lt3340) with nothing on screen. NetworkManager
-# rescans by itself in the background, so the cache is usually recent; the
-# "Rescan" row is the explicit refresh, and reopens the menu when it is done.
-# Only an empty cache triggers a scan unasked, since an empty menu is useless.
+# The picker always opens on a current scan, because a cached list shows signal
+# numbers that can be minutes old. A scan blocks for several seconds (about
+# 10 s on the lt3340), so a popup stays up for its duration: the wait is fine,
+# a wait with nothing on screen is not. nmcli skips the scan when its last one
+# is under 30 s old, so reopening right away is instant; the "Rescan" row
+# forces a new one.
 #
 # Why this exists: the session has no network applet. nm-applet works but its
 # tray icon is full-color with no symbolic variant, so waybar can't tint it to
@@ -83,7 +85,8 @@ done < <(nmcli -t -f NAME,TYPE connection show 2>/dev/null)
 # Visible networks. nmcli lists them strongest first, one row per access point,
 # so the first row seen for a name is its best signal. Rows with an empty name
 # are hidden networks. $1 is nmcli's --rescan mode: "no" reads the cache and
-# returns at once, "yes" scans and blocks until the scan is finished.
+# returns at once, "yes" scans and blocks until the scan is finished, "auto"
+# scans only when the last scan is more than 30 s old.
 ssids=() secs=() menu=()
 current=""
 load_networks() {
@@ -111,21 +114,20 @@ load_networks() {
 
 # Scan with a popup that stays up for the duration, then is replaced by a
 # short "done" so it clears as the menu appears. 20 s is only the popup's
-# upper bound in case the replacement never lands.
+# upper bound in case the replacement never lands. $1 is the --rescan mode.
 scan_networks() {
     local nid
     nid=$(notify-send -p -e -t 20000 "Wi-Fi" "Scanning for networks…" 2>/dev/null) || nid=""
-    load_networks yes
+    load_networks "$1"
     notify-send -e -t 500 ${nid:+-r "$nid"} "Wi-Fi" "Scan complete" 2>/dev/null || true
 }
 
 if [ "$radio" = "enabled" ]; then
-    if [ "${1:-}" = "rescan" ]; then
-        scan_networks
-    else
-        load_networks no
-        (( ${#ssids[@]} > 0 )) || scan_networks
-    fi
+    case "${1:-}" in
+        list)   load_networks no ;;
+        rescan) scan_networks yes ;;
+        *)      scan_networks auto ;;
+    esac
 fi
 
 # Actions follow the networks; `actions` holds what each extra row does.
