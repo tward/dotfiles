@@ -96,9 +96,18 @@ window#waybar {
 #memory.critical,
 #temperature.critical,
 #network.disconnected,
-#battery.critical:not(.charging),
+#battery.critical,
 #pulseaudio.muted {
     color: @red;
+}
+
+/* Power status takes precedence over low battery, including paused charging
+   and a full battery still connected to power. */
+#battery.charging,
+#battery.plugged,
+#battery.not-charging,
+#battery.full {
+    color: @green;
 }
 
 /* Accent the display module when a game profile is active (1440p/1080p), so the
