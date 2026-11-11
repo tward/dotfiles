@@ -91,6 +91,19 @@ ensure_ini_key() {
   fi
 }
 
+# Make sure the dconf "local" system database exists and is in the user profile,
+# so files dropped in /etc/dconf/db/local.d/ act as system defaults. Shared by
+# every step that sets a dconf default.
+ensure_dconf_local_db() {
+  mkdir -p /etc/dconf/profile /etc/dconf/db/local.d
+  local profile=/etc/dconf/profile/user
+  if [[ ! -f "$profile" ]]; then
+    printf 'user-db:user\nsystem-db:local\n' > "$profile"
+  elif ! grep -qxF 'system-db:local' "$profile"; then
+    printf 'system-db:local\n' >> "$profile"
+  fi
+}
+
 mask_user_service() {
   local svc="$1"
   if [[ -e "/usr/lib/systemd/user/$svc" || -e "/etc/systemd/user/$svc" ]]; then
@@ -234,13 +247,7 @@ cfg_bookmark() {
 # (/org/gtk/libgtk/theme/Adwaita/{gtk,gtk-dark}.css), no theme package required. The
 # dark variant then comes from prefer-dark, not from a separately-named theme.
 cfg_dark_mode() {
-  mkdir -p /etc/dconf/profile /etc/dconf/db/local.d
-  local profile=/etc/dconf/profile/user
-  if [[ ! -f "$profile" ]]; then
-    printf 'user-db:user\nsystem-db:local\n' > "$profile"
-  elif ! grep -qxF 'system-db:local' "$profile"; then
-    printf 'system-db:local\n' >> "$profile"
-  fi
+  ensure_dconf_local_db
   cat > /etc/dconf/db/local.d/00-dark-mode <<'EOF'
 # Default to dark; user choices (user-db) override these.
 [org/gnome/desktop/interface]
@@ -278,6 +285,22 @@ EOF
   done
 }
 
+# Bluetooth tray icon in the bar's own color, via a dconf system default (same
+# mechanism and "default, not lock" layering as dark mode above). blueman-applet's
+# stock tray icon is full-color, which waybar draws as-is. With this key on, blueman
+# hands the tray a symbolic icon instead, and waybar tints symbolic icons with the
+# bar's text color, so it matches the other modules. Takes effect the next time
+# blueman-applet starts (next login).
+cfg_blueman_tray() {
+  ensure_dconf_local_db
+  cat > /etc/dconf/db/local.d/00-blueman-tray <<'EOF'
+# Symbolic (tintable) Bluetooth tray icon; user choices (user-db) override this.
+[org/blueman/general]
+symbolic-status-icons=true
+EOF
+  dconf update 2>/dev/null || echo "  note: dconf update failed; the icon setting applies once dconf can compile the db."
+}
+
 # Run dotbot LAST (as the target user). Same setup as ./install's Linux path
 # (venv + dotbot), minus the interactive prompts, so this stays the single
 # configure-everything entry point.
@@ -303,6 +326,7 @@ if [[ "$machine_type" == desktop ]]; then
   step "Ensure GTK bookmark for /mnt/common" cfg_bookmark
 fi
 step "Set dark mode as the GNOME/GTK default" cfg_dark_mode
+step "Use a symbolic Bluetooth tray icon" cfg_blueman_tray
 step "Run dotbot (symlink dotfiles)" cfg_dotbot
 
 if [[ "$DEGRADED" -ne 0 ]]; then
