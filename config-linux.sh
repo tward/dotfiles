@@ -285,20 +285,30 @@ EOF
   done
 }
 
-# Bluetooth tray icon in the bar's own color, via a dconf system default (same
-# mechanism and "default, not lock" layering as dark mode above). blueman-applet's
-# stock tray icon is full-color, which waybar draws as-is. With this key on, blueman
-# hands the tray a symbolic icon instead, and waybar tints symbolic icons with the
-# bar's text color, so it matches the other modules. Takes effect the next time
-# blueman-applet starts (next login).
+# Hide blueman-applet's tray icon, via a dconf system default (same mechanism and
+# "default, not lock" layering as dark mode above). waybar's own bluetooth module
+# shows the state instead (waybar/config.jsonc), so the tray icon would be a
+# full-color duplicate. The applet keeps running: it is still the pairing agent and
+# does auto-connect; only its icon goes.
+#
+# The icon belongs to blueman's StatusIcon plugin, and "!Name" in plugin-list turns a
+# plugin off. ShowConnected has to go with it: it depends on StatusIcon, and blueman
+# loads a plugin's dependencies even when they are disabled, so leaving it on would
+# bring the icon straight back. Its only job is the tray icon's tooltip. PowerManager
+# and KillSwitch check for StatusIcon before using it, so they are unaffected
+# (blueman 2.4.6 source).
+#
+# A user who toggles any plugin in blueman's own plugin dialog replaces this whole
+# list in their user-db. Takes effect the next time blueman-applet starts (next login).
 cfg_blueman_tray() {
   ensure_dconf_local_db
   cat > /etc/dconf/db/local.d/00-blueman-tray <<'EOF'
-# Symbolic (tintable) Bluetooth tray icon; user choices (user-db) override this.
+# No blueman tray icon (waybar's bluetooth module replaces it); user choices
+# (user-db) override this.
 [org/blueman/general]
-symbolic-status-icons=true
+plugin-list=['!StatusIcon', '!ShowConnected']
 EOF
-  dconf update 2>/dev/null || echo "  note: dconf update failed; the icon setting applies once dconf can compile the db."
+  dconf update 2>/dev/null || echo "  note: dconf update failed; the tray setting applies once dconf can compile the db."
 }
 
 # Run dotbot LAST (as the target user). Same setup as ./install's Linux path
@@ -326,7 +336,7 @@ if [[ "$machine_type" == desktop ]]; then
   step "Ensure GTK bookmark for /mnt/common" cfg_bookmark
 fi
 step "Set dark mode as the GNOME/GTK default" cfg_dark_mode
-step "Use a symbolic Bluetooth tray icon" cfg_blueman_tray
+step "Hide the blueman tray icon (waybar shows Bluetooth)" cfg_blueman_tray
 step "Run dotbot (symlink dotfiles)" cfg_dotbot
 
 if [[ "$DEGRADED" -ne 0 ]]; then
