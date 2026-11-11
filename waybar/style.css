@@ -10,8 +10,13 @@
 @define-color red      #bf616a;                /* RED                     */
 @define-color green    #a3be8c;                /* AURORA GREEN — game mode */
 
+/* "Hack Nerd Font", not the "Mono" variant: Mono squeezes every icon into one
+   character cell, so wide glyphs (Wi-Fi, display, memory) render visibly smaller
+   than tall narrow ones (battery, Bluetooth) at the same font size. The standard
+   variant keeps the icons at their designed proportions. Letters and digits are
+   the same Hack glyphs in both. */
 * {
-    font-family: "Hack Nerd Font Mono", "Symbols Nerd Font", monospace;
+    font-family: "Hack Nerd Font", "Symbols Nerd Font", monospace;
     font-size: 13px;
     font-weight: bold;
     min-height: 0;
