@@ -13,7 +13,7 @@
 
     "modules-left": ["niri/workspaces", "niri/window"],
     "modules-center": ["custom/notification", "clock"],
-    "modules-right": ["mpris", "cpu", "memory", "temperature", "pulseaudio", "battery", "custom/display", "network", "tray", "custom/power"],
+    "modules-right": ["mpris", "cpu", "memory", "temperature", "pulseaudio", "battery", "custom/display", "network", "bluetooth", "tray", "custom/power"],
 
     "niri/workspaces": { "format": "{value}" },
     "niri/window": { "format": "{title}", "max-length": 60 },
@@ -90,6 +90,25 @@
             "<span size='xx-large'>󰂂</span>", "<span size='xx-large'>󰁹</span>"
         ],
         "tooltip-format": "{capacity}% · {timeTo}"
+    },
+
+    // Bluetooth state as a glyph in the bar's own font and color, replacing
+    // blueman-applet's full-color tray icon (hidden via a dconf default in
+    // config-linux.sh; the applet itself keeps running for pairing prompts and
+    // auto-connect). nf-md-bluetooth when on, nf-md-bluetooth_connect with a
+    // device connected, nf-md-bluetooth_off when powered off or blocked. No
+    // adapter gives empty text, which hides the module. Click opens the manager.
+    "bluetooth": {
+        "format": "<span size='xx-large'>󰂯</span>",
+        "format-connected": "<span size='xx-large'>󰂱</span>",
+        "format-off": "<span size='xx-large'>󰂲</span>",
+        "format-disabled": "<span size='xx-large'>󰂲</span>",
+        "format-no-controller": "",
+        "tooltip-format": "Bluetooth {status}",
+        "tooltip-format-connected": "{device_enumerate}",
+        "tooltip-format-enumerate-connected": "{device_alias}",
+        "tooltip-format-enumerate-connected-battery": "{device_alias} · {device_battery_percentage}%",
+        "on-click": "blueman-manager"
     },
 
     "tray": { "spacing": 8 },
