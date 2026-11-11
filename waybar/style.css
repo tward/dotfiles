@@ -10,13 +10,16 @@
 @define-color red      #bf616a;                /* RED                     */
 @define-color green    #a3be8c;                /* AURORA GREEN — game mode */
 
-/* "Hack Nerd Font", not the "Mono" variant: Mono squeezes every icon into one
-   character cell, so wide glyphs (Wi-Fi, display, memory) render visibly smaller
-   than tall narrow ones (battery, Bluetooth) at the same font size. The standard
-   variant keeps the icons at their designed proportions. Letters and digits are
-   the same Hack glyphs in both. */
+/* "Hack Nerd Font Propo", not the "Mono" or plain variants. Letters and digits
+   are the same monospaced Hack glyphs in all three; only the icons differ:
+   - Mono squeezes every icon into one character cell, so wide glyphs (Wi-Fi,
+     display, memory) render visibly smaller than tall narrow ones (battery,
+     Bluetooth) at the same font size.
+   - Plain keeps the icons' designed proportions but still advances one cell
+     per icon, so a wide icon overlaps the space after it and touches its label.
+   - Propo keeps the proportions and gives each icon its real width. */
 * {
-    font-family: "Hack Nerd Font", "Symbols Nerd Font", monospace;
+    font-family: "Hack Nerd Font Propo", "Symbols Nerd Font", monospace;
     font-size: 13px;
     font-weight: bold;
     min-height: 0;

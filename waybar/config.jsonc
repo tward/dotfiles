@@ -1,7 +1,12 @@
 {
     // Built for niri. Icon glyphs are exact codepoints from
-    // ~/dev/dotfiles/sketchybar, rendered with Hack Nerd Font (see style.css
-    // for why not the Mono variant).
+    // ~/dev/dotfiles/sketchybar, rendered with Hack Nerd Font Propo (see
+    // style.css for why that variant).
+    //
+    // Sizing convention: every icon is a Pango x-large span (1.44x the 13px base
+    // font), and a label beside an icon carries rise='1500' to sit centred
+    // against it. Both numbers were picked by eye from rendered mock-ups, not
+    // derived; change them together if the icon size changes.
     "layer": "top",
     "position": "top",
     "height": 30,
@@ -30,10 +35,10 @@
         "max-length": 50
     },
 
-    "cpu": { "format": "<span size='xx-large'></span> <span rise='2500'>{usage}%</span>", "interval": 2 },
+    "cpu": { "format": "<span size='x-large'></span> <span rise='1500'>{usage}%</span>", "interval": 2 },
 
     "memory": {
-        "format": "<span size='xx-large'>󱤓</span> <span rise='2500'>{percentage}%</span>",
+        "format": "<span size='x-large'>󱤓</span> <span rise='1500'>{percentage}%</span>",
         "interval": 5,
         "tooltip-format": "{used:0.1f}G / {total:0.1f}G used"
     },
@@ -50,17 +55,17 @@
             "/sys/devices/pci0000:00/0000:00:18.3/hwmon"
         ],
         "input-filename": "temp1_input",
-        // No icon, but an invisible xx-large glyph gives temp the same tall
+        // No icon, but an invisible x-large glyph gives temp the same tall
         // line-box as cpu/mem so the same rise centres it identically, instead
         // of fighting the shorter natural line-box with a large negative rise.
-        "format": "<span size='xx-large' alpha='1%'>​</span><span rise='2500'>{temperatureC}°C</span>",
+        "format": "<span size='x-large' alpha='1%'>​</span><span rise='1500'>{temperatureC}°C</span>",
         "critical-threshold": 80
     },
 
     "pulseaudio": {
-        "format": "{icon} <span rise='2100'>{volume}%</span>",
-        "format-muted": "<span size='xx-large'>󰝟</span> <span rise='2500'>muted</span>",
-        "format-icons": { "default": ["<span size='xx-large'>󰕿</span>", "<span size='xx-large'>󰖀</span>", "<span size='xx-large'>󰕾</span>"] },
+        "format": "{icon} <span rise='1300'>{volume}%</span>",
+        "format-muted": "<span size='x-large'>󰝟</span> <span rise='1500'>muted</span>",
+        "format-icons": { "default": ["<span size='x-large'>󰕿</span>", "<span size='x-large'>󰖀</span>", "<span size='x-large'>󰕾</span>"] },
         "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
     },
 
@@ -72,13 +77,13 @@
     "network": {
         "format-wifi": "{icon}",
         "format-icons": [
-            "<span size='xx-large'>󰤟</span>", "<span size='xx-large'>󰤢</span>",
-            "<span size='xx-large'>󰤥</span>", "<span size='xx-large'>󰤨</span>"
+            "<span size='x-large'>󰤟</span>", "<span size='x-large'>󰤢</span>",
+            "<span size='x-large'>󰤥</span>", "<span size='x-large'>󰤨</span>"
         ],
-        "format-ethernet": "<span size='xx-large'>󰈀</span>",
-        "format-linked": "<span size='xx-large'>󰤯</span>",
-        "format-disabled": "<span size='xx-large'>󰤭</span>",
-        "format-disconnected": "<span size='xx-large'>󰖪</span>",
+        "format-ethernet": "<span size='x-large'>󰈀</span>",
+        "format-linked": "<span size='x-large'>󰤯</span>",
+        "format-disabled": "<span size='x-large'>󰤭</span>",
+        "format-disconnected": "<span size='x-large'>󰖪</span>",
         "tooltip-format-wifi": "{essid} · {signalStrength}% · {ipaddr}",
         "tooltip-format-ethernet": "{ifname} · {ipaddr}",
         "tooltip-format-disconnected": "offline",
@@ -92,14 +97,14 @@
     // then full; charging swaps in nf-md-battery_charging.
     "battery": {
         "states": { "warning": 30, "critical": 15 },
-        "format": "{icon} <span rise='2500'>{capacity}%</span>",
-        "format-charging": "<span size='xx-large'>󰂄</span> <span rise='2500'>{capacity}%</span>",
+        "format": "{icon} <span rise='1500'>{capacity}%</span>",
+        "format-charging": "<span size='x-large'>󰂄</span> <span rise='1500'>{capacity}%</span>",
         "format-icons": [
-            "<span size='xx-large'>󰁺</span>", "<span size='xx-large'>󰁻</span>",
-            "<span size='xx-large'>󰁼</span>", "<span size='xx-large'>󰁽</span>",
-            "<span size='xx-large'>󰁾</span>", "<span size='xx-large'>󰁿</span>",
-            "<span size='xx-large'>󰂀</span>", "<span size='xx-large'>󰂁</span>",
-            "<span size='xx-large'>󰂂</span>", "<span size='xx-large'>󰁹</span>"
+            "<span size='x-large'>󰁺</span>", "<span size='x-large'>󰁻</span>",
+            "<span size='x-large'>󰁼</span>", "<span size='x-large'>󰁽</span>",
+            "<span size='x-large'>󰁾</span>", "<span size='x-large'>󰁿</span>",
+            "<span size='x-large'>󰂀</span>", "<span size='x-large'>󰂁</span>",
+            "<span size='x-large'>󰂂</span>", "<span size='x-large'>󰁹</span>"
         ],
         "tooltip-format": "{capacity}% · {timeTo}"
     },
@@ -111,10 +116,10 @@
     // device connected, nf-md-bluetooth_off when powered off or blocked. No
     // adapter gives empty text, which hides the module. Click opens the manager.
     "bluetooth": {
-        "format": "<span size='xx-large'>󰂯</span>",
-        "format-connected": "<span size='xx-large'>󰂱</span>",
-        "format-off": "<span size='xx-large'>󰂲</span>",
-        "format-disabled": "<span size='xx-large'>󰂲</span>",
+        "format": "<span size='x-large'>󰂯</span>",
+        "format-connected": "<span size='x-large'>󰂱</span>",
+        "format-off": "<span size='x-large'>󰂲</span>",
+        "format-disabled": "<span size='x-large'>󰂲</span>",
         "format-no-controller": "",
         "tooltip-format": "Bluetooth {status}",
         "tooltip-format-connected": "{device_enumerate}",
@@ -131,14 +136,14 @@
         "tooltip": false,
         "format": "{icon}",
         "format-icons": {
-            "notification": "<span size='xx-large' foreground='#bf616a'>󰵙</span>",
-            "none": "<span size='xx-large'>󰂜</span>",
-            "dnd-notification": "<span size='xx-large' foreground='#bf616a'>󰂠</span>",
-            "dnd-none": "<span size='xx-large'>󰂠</span>",
-            "inhibited-notification": "<span size='xx-large' foreground='#bf616a'>󰵙</span>",
-            "inhibited-none": "<span size='xx-large'>󰂜</span>",
-            "dnd-inhibited-notification": "<span size='xx-large' foreground='#bf616a'>󰂠</span>",
-            "dnd-inhibited-none": "<span size='xx-large'>󰂠</span>"
+            "notification": "<span size='x-large' foreground='#bf616a'>󰵙</span>",
+            "none": "<span size='x-large'>󰂜</span>",
+            "dnd-notification": "<span size='x-large' foreground='#bf616a'>󰂠</span>",
+            "dnd-none": "<span size='x-large'>󰂠</span>",
+            "inhibited-notification": "<span size='x-large' foreground='#bf616a'>󰵙</span>",
+            "inhibited-none": "<span size='x-large'>󰂜</span>",
+            "dnd-inhibited-notification": "<span size='x-large' foreground='#bf616a'>󰂠</span>",
+            "dnd-inhibited-none": "<span size='x-large'>󰂠</span>"
         },
         "return-type": "json",
         "exec-if": "which swaync-client",
@@ -157,7 +162,7 @@
     // would still show; this hides the whole module instead.
     "custom/display": {
         "hide-empty-text": true,
-        "format": "<span size='xx-large'>󰍹</span> <span rise='2500'>{}</span>",
+        "format": "<span size='x-large'>󰍹</span> <span rise='1500'>{}</span>",
         "return-type": "json",
         "exec": "$HOME/.local/bin/niri-display-mode waybar",
         "interval": 30,
@@ -167,7 +172,7 @@
     },
 
     "custom/power": {
-        "format": "<span size='xx-large'>⏻</span>",
+        "format": "<span size='x-large'>⏻</span>",
         "tooltip-format": "Power menu",
         "on-click": "sh $HOME/.config/waybar/powermenu.sh"
     }
