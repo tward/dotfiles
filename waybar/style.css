@@ -8,6 +8,7 @@
 @define-color bg_pill  #1c1f26;                /* GREY16  inactive pill   */
 @define-color fg       #999797;                /* FG                      */
 @define-color red      #bf616a;                /* RED                     */
+@define-color yellow   #ebcb8b;                /* YELLOW                  */
 @define-color green    #a3be8c;                /* AURORA GREEN — game mode */
 
 /* "Hack Nerd Font Propo", not the "Mono" or plain variants. Letters and digits
@@ -74,6 +75,13 @@ window#waybar {
     padding: 0 10px;
 }
 
+#cpu.warning,
+#memory.warning {
+    color: @yellow;
+}
+
+#cpu.critical,
+#memory.critical,
 #temperature.critical,
 #network.disconnected,
 #battery.critical:not(.charging),

@@ -35,11 +35,17 @@
         "max-length": 50
     },
 
-    "cpu": { "format": "<span size='x-large'></span> <span rise='1500'>{usage}%</span>", "interval": 2 },
+    // Usage states are inclusive: 50–75% warning, 76% and above critical.
+    "cpu": {
+        "format": "<span size='x-large'></span> <span rise='1500'>{usage}%</span>",
+        "interval": 2,
+        "states": { "warning": 50, "critical": 76 }
+    },
 
     "memory": {
         "format": "<span size='x-large'>󱤓</span> <span rise='1500'>{percentage}%</span>",
         "interval": 5,
+        "states": { "warning": 50, "critical": 76 },
         "tooltip-format": "{used:0.1f}G / {total:0.1f}G used"
     },
 
@@ -63,8 +69,9 @@
     },
 
     "pulseaudio": {
-        "format": "{icon} <span rise='1300'>{volume}%</span>",
-        "format-muted": "<span size='x-large'>󰝟</span> <span rise='1500'>muted</span>",
+        "format": "{icon}",
+        "format-muted": "<span size='x-large'>󰝟</span>",
+        "tooltip-format": "{volume}% · {desc}",
         "format-icons": { "default": ["<span size='x-large'>󰕿</span>", "<span size='x-large'>󰖀</span>", "<span size='x-large'>󰕾</span>"] },
         "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
     },
@@ -97,8 +104,8 @@
     // then full; charging swaps in nf-md-battery_charging.
     "battery": {
         "states": { "warning": 30, "critical": 15 },
-        "format": "{icon} <span rise='1500'>{capacity}%</span>",
-        "format-charging": "<span size='x-large'>󰂄</span> <span rise='1500'>{capacity}%</span>",
+        "format": "{icon}",
+        "format-charging": "<span size='x-large'>󰂄</span>",
         "format-icons": [
             "<span size='x-large'>󰁺</span>", "<span size='x-large'>󰁻</span>",
             "<span size='x-large'>󰁼</span>", "<span size='x-large'>󰁽</span>",
