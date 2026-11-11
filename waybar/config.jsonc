@@ -38,6 +38,17 @@
     },
 
     "temperature": {
+        // CPU temperature from the CPU's own sensor, by permanent device path
+        // (hwmonN numbers change between boots). With no sensor named, waybar
+        // reads thermal_zone0, which on the lt3340 is "INT3400 Thermal", a
+        // firmware placeholder fixed at 20°C. waybar uses the first path that
+        // exists: Intel coretemp on the laptop (temp1 = package), AMD k10temp
+        // on the desktop (temp1 = Tctl).
+        "hwmon-path-abs": [
+            "/sys/devices/platform/coretemp.0/hwmon",
+            "/sys/devices/pci0000:00/0000:00:18.3/hwmon"
+        ],
+        "input-filename": "temp1_input",
         // No icon, but an invisible xx-large glyph gives temp the same tall
         // line-box as cpu/mem so the same rise centres it identically, instead
         // of fighting the shorter natural line-box with a large negative rise.
