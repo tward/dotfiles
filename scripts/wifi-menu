@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+#
+# wifi-menu — fuzzel picker for joining Wi-Fi networks from the niri session,
+# over nmcli. Opened by clicking the waybar network module (waybar/config.jsonc).
+#
+#   wifi-menu         open the picker
+#   wifi-menu list    print the menu lines and exit (no UI; for checking by hand)
+#
+# Why this exists: the session has no network applet. nm-applet works but its
+# tray icon is full-color with no symbolic variant, so waybar can't tint it to
+# match the bar. This keeps the bar's own network glyph and reuses fuzzel, like
+# niri-display-mode's menu.
+#
+# What it does: lists visible networks strongest first (one row per name),
+# joins the chosen one, and offers "Disconnect" and "Turn Wi-Fi off/on". A
+# network that already has a saved profile is brought up from that profile; an
+# open network is joined directly; a WPA network prompts for its password in a
+# second fuzzel box.
+#
+# Saved networks are NetworkManager system profiles in
+# /etc/NetworkManager/system-connections/ (root-only files, password stored by
+# NetworkManager, auto-connect on). No keyring is involved.
+#
+# Limits, on purpose:
+#   - Enterprise (802.1X) and hidden networks are not handled; use nmcli.
+#   - A new network's password is passed to nmcli as an argument, so it is
+#     visible in the process list to other local users for the moment nmcli
+#     runs. Acceptable on a single-user machine; nmcli offers no stdin form for
+#     `device wifi connect`.
+#   - Forgetting a network is `nmcli connection delete "<name>"` in a terminal.
+#
+# Needs no privileges: NetworkManager's polkit rules allow an active local
+# session to control networking. Over SSH the same nmcli calls are refused.
+
+set -uo pipefail
+
+WAIT=30   # seconds nmcli may spend activating before giving up
+
+info() { notify-send -e -t 4000 "Wi-Fi" "$1" 2>/dev/null || true; }
+fail() { notify-send -e -t 8000 -u critical "Wi-Fi" "$1" 2>/dev/null || true; }
+
+# nmcli's terse (-t / -g) output escapes ':' and '\' inside values.
+unescape() {
+    local s=$1
+    s=${s//\\:/:}
+    s=${s//\\\\/\\}
+    printf '%s' "$s"
+}
+
+# Last line of nmcli's output, without its "Error: " prefix.
+reason() {
+    local line
+    line=$(printf '%s\n' "$1" | tail -n1)
+    printf '%s' "${line#Error: }"
+}
+
+dev=$(nmcli -t -f DEVICE,TYPE device 2>/dev/null | awk -F: '$2 == "wifi" { print $1; exit }')
+if [ -z "$dev" ]; then
+    info "No Wi-Fi device on this machine"
+    exit 0
+fi
+
+radio=$(nmcli radio wifi 2>/dev/null)
+
+# Saved Wi-Fi profiles, keyed by the SSID they are for (the profile name is
+# usually the SSID, but need not be).
+declare -A saved
+while IFS=: read -r name type; do
+    [ "$type" = "802-11-wireless" ] || continue
+    name=$(unescape "$name")
+    ssid=$(nmcli -g 802-11-wireless.ssid connection show id "$name" 2>/dev/null) || continue
+    ssid=$(unescape "$ssid")
+    [ -n "$ssid" ] && saved[$ssid]=$name
+done < <(nmcli -t -f NAME,TYPE connection show 2>/dev/null)
+
+# Visible networks. nmcli lists them strongest first, one row per access point,
+# so the first row seen for a name is its best signal. Rows with an empty name
+# are hidden networks. `list` rescans by itself when its cache is stale, which
+# can take a few seconds before the menu appears.
+ssids=() secs=() menu=()
+current=""
+declare -A seen
+if [ "$radio" = "enabled" ]; then
+    while IFS=: read -r inuse signal sec ssid; do
+        ssid=$(unescape "$ssid")
+        [ -n "$ssid" ] || continue
+        [ -z "${seen[$ssid]:-}" ] || continue
+        seen[$ssid]=1
+        [ "$sec" = "--" ] && sec=""
+
+        label=$(printf '%3s%%  %s' "$signal" "$ssid")
+        label+="  ·  ${sec:-open}"
+        [ -n "${saved[$ssid]:-}" ] && label+="  ·  saved"
+        if [ "$inuse" = "*" ]; then
+            current=$ssid
+            label+="  ·  connected"
+        fi
+        ssids+=("$ssid"); secs+=("$sec"); menu+=("$label")
+    done < <(nmcli -t -f IN-USE,SIGNAL,SECURITY,SSID device wifi list ifname "$dev" 2>/dev/null)
+fi
+
+# Actions follow the networks; `actions` holds what each extra row does.
+actions=()
+if [ -n "$current" ]; then
+    menu+=("Disconnect from $current"); actions+=(disconnect)
+fi
+if [ "$radio" = "enabled" ]; then
+    menu+=("Turn Wi-Fi off"); actions+=(radio-off)
+else
+    menu+=("Turn Wi-Fi on"); actions+=(radio-on)
+fi
+
+if [ "${1:-}" = "list" ]; then
+    printf '%s\n' "${menu[@]}"
+    exit 0
+fi
+
+# --index returns the chosen row's position, so labels never have to be parsed
+# back into network names. --width is in characters.
+idx=$(printf '%s\n' "${menu[@]}" |
+    fuzzel --dmenu --index --only-match --width 56 --prompt "Wi-Fi  ") || exit 0
+[[ "$idx" =~ ^[0-9]+$ ]] || exit 0
+
+n=${#ssids[@]}
+if (( idx >= n )); then
+    case "${actions[idx - n]:-}" in
+        disconnect)
+            if out=$(nmcli device disconnect "$dev" 2>&1); then info "Disconnected from $current"
+            else fail "Could not disconnect: $(reason "$out")"; fi ;;
+        radio-off) nmcli radio wifi off && info "Wi-Fi off" ;;
+        radio-on)  nmcli radio wifi on && info "Wi-Fi on" ;;
+    esac
+    exit 0
+fi
+
+ssid=${ssids[idx]}
+sec=${secs[idx]}
+profile=${saved[$ssid]:-}
+
+if [ "$ssid" = "$current" ]; then
+    info "Already connected to $ssid"
+    exit 0
+fi
+
+if [ -n "$profile" ]; then
+    info "Connecting to $ssid…"
+    if out=$(nmcli --wait "$WAIT" connection up id "$profile" ifname "$dev" 2>&1); then
+        info "Connected to $ssid"
+    else
+        fail "Could not connect to $ssid: $(reason "$out"). If the password changed, forget it with: nmcli connection delete \"$profile\""
+    fi
+    exit 0
+fi
+
+if [[ "$sec" == *802.1X* ]]; then
+    fail "$ssid is an enterprise (802.1X) network; this menu can't set it up. Use nmcli or nm-connection-editor."
+    exit 0
+fi
+
+args=(device wifi connect "$ssid" ifname "$dev")
+if [ -n "$sec" ]; then
+    # --prompt-only: no list, just the input line. --password masks the typing.
+    pw=$(fuzzel --dmenu --password --width 56 --prompt-only "Password for $ssid  ") || exit 0
+    [ -n "$pw" ] || exit 0
+    args+=(password "$pw")
+fi
+
+info "Connecting to $ssid…"
+if out=$(nmcli --wait "$WAIT" "${args[@]}" 2>&1); then
+    info "Connected to $ssid"
+else
+    # nmcli names a new profile after the SSID. Remove the one this attempt
+    # created so a wrong password doesn't linger as a saved network.
+    nmcli connection delete id "$ssid" >/dev/null 2>&1 || true
+    fail "Could not connect to $ssid: $(reason "$out")"
+fi

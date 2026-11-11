@@ -36,6 +36,7 @@
     ~/.local/bin/ddc-brightness: scripts/ddc-brightness
     ~/.local/bin/niri-display-mode: scripts/niri-display-mode
     ~/.local/bin/swaync-respawn: scripts/swaync-respawn
+    ~/.local/bin/wifi-menu: scripts/wifi-menu
     # Wallpaper for niri's swaybg (see niri/config.kdl). force: machines set up
     # before the image was tracked hold a real copy here, which a plain link
     # refuses to replace.

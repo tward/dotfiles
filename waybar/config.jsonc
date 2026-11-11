@@ -52,11 +52,26 @@
         "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
     },
 
+    // Icon only. Wi-Fi shows one of four strength glyphs picked by signal
+    // (nf-md-wifi_strength_1..4), wired shows nf-md-ethernet, no connection shows
+    // nf-md-wifi_off. The network name and address live in the tooltip. Click
+    // opens scripts/wifi-menu, a fuzzel picker over nmcli. Absolute $HOME path
+    // because niri-spawned waybar lacks ~/.local/bin on PATH.
     "network": {
-        "format-wifi": "󰖩 {essid}",
-        "format-ethernet": "wired",
-        "format-disconnected": "󰖪 offline",
-        "tooltip-format": "{ifname}: {ipaddr}"
+        "format-wifi": "{icon}",
+        "format-icons": [
+            "<span size='xx-large'>󰤟</span>", "<span size='xx-large'>󰤢</span>",
+            "<span size='xx-large'>󰤥</span>", "<span size='xx-large'>󰤨</span>"
+        ],
+        "format-ethernet": "<span size='xx-large'>󰈀</span>",
+        "format-linked": "<span size='xx-large'>󰤯</span>",
+        "format-disabled": "<span size='xx-large'>󰤭</span>",
+        "format-disconnected": "<span size='xx-large'>󰖪</span>",
+        "tooltip-format-wifi": "{essid} · {signalStrength}% · {ipaddr}",
+        "tooltip-format-ethernet": "{ifname} · {ipaddr}",
+        "tooltip-format-disconnected": "offline",
+        "tooltip-format": "{ifname}",
+        "on-click": "$HOME/.local/bin/wifi-menu"
     },
 
     // Laptop battery. Listed unconditionally: on a machine with no battery in
