@@ -30,12 +30,15 @@
 # /etc/NetworkManager/system-connections/ (root-only files, password stored by
 # NetworkManager, auto-connect on). No keyring is involved.
 #
+# A new network's password never appears on a command line. The obvious
+# `nmcli device wifi connect SSID password PW` puts it in the process list,
+# readable by every local process while nmcli runs. Instead the profile is
+# created without a secret, then activated with the password piped to
+# `passwd-file /dev/stdin`. The price is that this script, not nmcli, picks the
+# key management type from the scan's SECURITY column.
+#
 # Limits, on purpose:
-#   - Enterprise (802.1X) and hidden networks are not handled; use nmcli.
-#   - A new network's password is passed to nmcli as an argument, so it is
-#     visible in the process list to other local users for the moment nmcli
-#     runs. Acceptable on a single-user machine; nmcli offers no stdin form for
-#     `device wifi connect`.
+#   - Enterprise (802.1X), WEP, and hidden networks are not handled; use nmcli.
 #   - Forgetting a network is `nmcli connection delete "<name>"` in a terminal.
 #
 # Needs no privileges: NetworkManager's polkit rules allow an active local
@@ -190,20 +193,60 @@ if [[ "$sec" == *802.1X* ]]; then
     exit 0
 fi
 
-args=(device wifi connect "$ssid" ifname "$dev")
-if [ -n "$sec" ]; then
-    # --prompt-only: no list, just the input line. --password masks the typing.
-    pw=$(fuzzel --dmenu --password --width 56 --prompt-only "Password for $ssid  ") || exit 0
-    [ -n "$pw" ] || exit 0
-    args+=(password "$pw")
+# Remove the profile this attempt created, so a failed join (wrong password,
+# out of range) doesn't linger as a saved network. New profiles are named
+# after the SSID, by nmcli in the open case and by this script otherwise.
+forget_new() { nmcli connection delete id "$ssid" >/dev/null 2>&1 || true; }
+
+# Open network: nothing secret, so nmcli creates and activates it in one step.
+if [ -z "$sec" ]; then
+    info "Connecting to $ssid…"
+    if out=$(nmcli --wait "$WAIT" device wifi connect "$ssid" ifname "$dev" 2>&1); then
+        info "Connected to $ssid"
+    else
+        forget_new
+        fail "Could not connect to $ssid: $(reason "$out")"
+    fi
+    exit 0
 fi
 
+# Password network. A mixed WPA2/WPA3 network accepts wpa-psk; sae is only
+# needed when WPA3 is all the access point offers.
+case "$sec" in
+    *WPA1*|*WPA2*) keymgmt=wpa-psk ;;
+    *WPA3*)        keymgmt=sae ;;
+    *)
+        fail "$ssid uses $sec, which this menu can't set up. Use nmcli."
+        exit 0 ;;
+esac
+
+# --prompt-only: no list, just the input line. --password masks the typing.
+pw=$(fuzzel --dmenu --password --width 56 --prompt-only "Password for $ssid  ") || exit 0
+[ -n "$pw" ] || exit 0
+
 info "Connecting to $ssid…"
-if out=$(nmcli --wait "$WAIT" "${args[@]}" 2>&1); then
-    info "Connected to $ssid"
+
+# Created with autoconnect off so NetworkManager doesn't start its own attempt
+# (which would have no password) in the gap before the activation below.
+if ! out=$(nmcli connection add type wifi con-name "$ssid" ssid "$ssid" \
+        connection.autoconnect no wifi-sec.key-mgmt "$keymgmt" 2>&1); then
+    fail "Could not set up $ssid: $(reason "$out")"
+    exit 0
+fi
+
+# printf is a shell builtin, so the password goes down the pipe without ever
+# being a process argument.
+if out=$(printf '802-11-wireless-security.psk:%s\n' "$pw" |
+        nmcli --wait "$WAIT" connection up id "$ssid" ifname "$dev" passwd-file /dev/stdin 2>&1); then
+    nmcli connection modify id "$ssid" connection.autoconnect yes >/dev/null 2>&1 || true
+    # NetworkManager should have stored the password it was handed. Confirm,
+    # because without it the profile can't reconnect by itself.
+    if [ -n "$(nmcli -s -g 802-11-wireless-security.psk connection show id "$ssid" 2>/dev/null)" ]; then
+        info "Connected to $ssid"
+    else
+        fail "Connected to $ssid, but the password was not saved, so it won't reconnect by itself."
+    fi
 else
-    # nmcli names a new profile after the SSID. Remove the one this attempt
-    # created so a wrong password doesn't linger as a saved network.
-    nmcli connection delete id "$ssid" >/dev/null 2>&1 || true
+    forget_new
     fail "Could not connect to $ssid: $(reason "$out")"
 fi
