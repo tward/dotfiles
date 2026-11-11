@@ -1,6 +1,7 @@
 {
     // Built for niri. Icon glyphs are exact codepoints from
-    // ~/dev/dotfiles/sketchybar, rendered with Hack Nerd Font Mono.
+    // ~/dev/dotfiles/sketchybar, rendered with Hack Nerd Font (see style.css
+    // for why not the Mono variant).
     "layer": "top",
     "position": "top",
     "height": 30,
@@ -151,8 +152,11 @@
     // mode, right-click opens the fuzzel display menu; both via niri-display-mode.
     // Absolute $HOME path because niri-spawned waybar lacks ~/.local/bin on PATH.
     // The script pings SIGRTMIN+8 after a change for an instant refresh; interval
-    // is just a slow safety re-poll.
+    // is just a slow safety re-poll. hide-empty-text: on a machine without the
+    // external monitor the script prints empty text, but the icon in "format"
+    // would still show; this hides the whole module instead.
     "custom/display": {
+        "hide-empty-text": true,
         "format": "<span size='xx-large'>󰍹</span> <span rise='2500'>{}</span>",
         "return-type": "json",
         "exec": "$HOME/.local/bin/niri-display-mode waybar",
