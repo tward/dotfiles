@@ -9,6 +9,8 @@
 @define-color fg       #999797;                /* FG                      */
 @define-color red      #bf616a;                /* RED                     */
 @define-color yellow   #ebcb8b;                /* YELLOW                  */
+@define-color blue     #5e81ac;                /* BLUE                    */
+@define-color orange   #d08770;                /* ORANGE                  */
 @define-color green    #a3be8c;                /* AURORA GREEN — game mode */
 
 /* "Hack Nerd Font Propo", not the "Mono" or plain variants. Letters and digits
@@ -75,9 +77,19 @@ window#waybar {
     padding: 0 10px;
 }
 
+#cpu.moderate,
+#memory.moderate {
+    color: @blue;
+}
+
 #cpu.warning,
 #memory.warning {
     color: @yellow;
+}
+
+#cpu.high,
+#memory.high {
+    color: @orange;
 }
 
 #cpu.critical,

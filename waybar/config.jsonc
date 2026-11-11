@@ -35,18 +35,19 @@
         "max-length": 50
     },
 
-    // Usage states are inclusive: 50–75% warning, 76% and above critical.
+    // Icon colors: gray <25%, blue 25–49%, yellow 50–64%, orange 65–75%, red >75%.
     "cpu": {
-        "format": "<span size='x-large'></span> <span rise='1500'>{usage}%</span>",
+        "format": "<span size='x-large'></span>",
         "interval": 2,
-        "states": { "warning": 50, "critical": 76 }
+        "states": { "moderate": 25, "warning": 50, "high": 65, "critical": 76 },
+        "tooltip-format": "CPU: {usage}%"
     },
 
     "memory": {
-        "format": "<span size='x-large'>󱤓</span> <span rise='1500'>{percentage}%</span>",
+        "format": "<span size='x-large'>󱤓</span>",
         "interval": 5,
-        "states": { "warning": 50, "critical": 76 },
-        "tooltip-format": "{used:0.1f}G / {total:0.1f}G used"
+        "states": { "moderate": 25, "warning": 50, "high": 65, "critical": 76 },
+        "tooltip-format": "RAM: {percentage}% · {used:0.1f}G / {total:0.1f}G used"
     },
 
     "temperature": {
@@ -61,10 +62,27 @@
             "/sys/devices/pci0000:00/0000:00:18.3/hwmon"
         ],
         "input-filename": "temp1_input",
-        // No icon, but an invisible x-large glyph gives temp the same tall
-        // line-box as cpu/mem so the same rise centres it identically, instead
-        // of fighting the shorter natural line-box with a large negative rise.
-        "format": "<span size='x-large' alpha='1%'>​</span><span rise='1500'>{temperatureC}°C</span>",
+        "format": "<span size='x-large'>{icon}</span>",
+        "format-critical": "<span size='x-large'>󰔏</span>",
+        "tooltip-format": "CPU temperature: {temperatureC}°C",
+        // Temperature has no arbitrary states. With critical-threshold 80,
+        // these 16 slots each cover 5°C (using Waybar's rounded Celsius value).
+        // Repeat the same thermometer; Pango colors mirror the CSS palette.
+        // At >=80°C, format-critical inherits the red CSS color instead.
+        "format-icons": [
+            // 0–44°C: gray (inherited).
+            "󰔏", "󰔏", "󰔏", "󰔏", "󰔏", "󰔏", "󰔏", "󰔏", "󰔏",
+            // 45–59°C: blue.
+            "<span foreground='#5e81ac'>󰔏</span>",
+            "<span foreground='#5e81ac'>󰔏</span>",
+            "<span foreground='#5e81ac'>󰔏</span>",
+            // 60–69°C: yellow.
+            "<span foreground='#ebcb8b'>󰔏</span>",
+            "<span foreground='#ebcb8b'>󰔏</span>",
+            // 70–79°C: orange.
+            "<span foreground='#d08770'>󰔏</span>",
+            "<span foreground='#d08770'>󰔏</span>"
+        ],
         "critical-threshold": 80
     },
 
