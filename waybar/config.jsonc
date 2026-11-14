@@ -19,7 +19,7 @@
 
     "modules-left": ["niri/workspaces", "niri/window"],
     "modules-center": ["custom/notification", "clock"],
-    "modules-right": ["mpris", "cpu", "memory", "temperature", "pulseaudio", "battery", "custom/display", "network", "bluetooth", "tray", "custom/power"],
+    "modules-right": ["mpris", "cpu", "custom/memory", "temperature", "pulseaudio", "battery", "custom/display", "network", "bluetooth", "tray", "custom/power"],
 
     "niri/workspaces": { "format": "{value}" },
     "niri/window": { "format": "{title}", "max-length": 60 },
@@ -43,11 +43,16 @@
         "tooltip-format": "CPU: {usage}%"
     },
 
-    "memory": {
+    // Custom instead of the built-in memory module, which counts the amdgpu
+    // TTM page pool (purgeable freed GPU memory) as used and has no per-owner
+    // breakdown. memory.sh sets the color class itself, with the same
+    // thresholds as cpu above, from memory really in use, and writes the
+    // tooltip. It sits beside this file, so the waybar symlink deploys it.
+    "custom/memory": {
         "format": "<span size='x-large'>󱤓</span>",
         "interval": 5,
-        "states": { "moderate": 25, "warning": 50, "high": 65, "critical": 76 },
-        "tooltip-format": "RAM: {percentage}% · {used:0.1f}G / {total:0.1f}G used"
+        "return-type": "json",
+        "exec": "$HOME/.config/waybar/memory.sh"
     },
 
     "temperature": {

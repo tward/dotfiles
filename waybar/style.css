@@ -64,7 +64,7 @@ window#waybar {
 #clock,
 #mpris,
 #cpu,
-#memory,
+#custom-memory,
 #temperature,
 #pulseaudio,
 #network,
@@ -78,22 +78,22 @@ window#waybar {
 }
 
 #cpu.moderate,
-#memory.moderate {
+#custom-memory.moderate {
     color: @blue;
 }
 
 #cpu.warning,
-#memory.warning {
+#custom-memory.warning {
     color: @yellow;
 }
 
 #cpu.high,
-#memory.high {
+#custom-memory.high {
     color: @orange;
 }
 
 #cpu.critical,
-#memory.critical,
+#custom-memory.critical,
 #temperature.critical,
 #network.disconnected,
 #battery.critical,
