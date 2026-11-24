@@ -60,8 +60,44 @@ is_running() {
 # skhd/sketchybar were stopped or any defaults were restored.
 try() {
   if ! "$@"; then
-    echo "  warning: '$*' failed (continuing)" >&2
+    warn "'$*' failed (continuing)"
   fi
+}
+
+WARNINGS=0
+
+warn() {
+  echo "  warning: $*" >&2
+  WARNINGS=$((WARNINGS + 1))
+}
+
+# Say so at the end if any step failed, so "ON"/"OFF" is not read as a clean run.
+report_warnings() {
+  if ((WARNINGS > 0)); then
+    echo "  $WARNINGS step(s) failed, see the warnings above." >&2
+  fi
+}
+
+# Seconds to wait for yabai to answer after starting it. A heuristic, not a
+# measured bound: a healthy start answered within a few seconds on this machine.
+YABAI_START_TIMEOUT=10
+
+# `yabai --start-service` returns 0 as soon as launchd accepts the job, even if
+# yabai then hangs. Before it opens its socket or runs yabairc, yabai scans the
+# windows of every running app over the Accessibility API; an app that never
+# answers (seen with a game) stalls that scan indefinitely, leaving a "running"
+# yabai that manages nothing and logs nothing. A query only succeeds once
+# startup has finished, so use one as the readiness check.
+wait_for_yabai() {
+  local waited=0
+  while ((waited < YABAI_START_TIMEOUT)); do
+    if yabai -m query --displays &>/dev/null; then
+      return 0
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  return 1
 }
 
 # Get the current menu bar auto-hide setting via defaults (for state capture)
@@ -85,6 +121,10 @@ set_stage_manager() {
 
   # Only toggle if current state doesn't match desired
   if [[ "$desired" == "off" && "$current" == "1" ]] || [[ "$desired" == "on" && "$current" == "0" ]]; then
+    # osascript's stderr is left visible on purpose: it is the only clue when
+    # UI scripting is refused (no Accessibility permission for the app running
+    # this script) or the element path no longer matches System Settings.
+    local toggled=true
     try open "x-apple.systempreferences:com.apple.Desktop-Settings"
     sleep 1
     osascript -e '
@@ -95,11 +135,15 @@ set_stage_manager() {
           click checkbox "Stage Manager" of group 5 of scroll area 1 of group 1 of group 3 of splitter group 1 of group 1 of window "Desktop & Dock"
         end tell
       end tell
-    ' 2>/dev/null || true
+    ' >/dev/null || toggled=false
     sleep 3
     osascript -e 'tell application "System Settings" to quit' 2>/dev/null || true
     sleep 1
-    echo "  Stage Manager: $desired"
+    if $toggled; then
+      echo "  Stage Manager: $desired"
+    else
+      warn "could not turn Stage Manager $desired via UI scripting (continuing)"
+    fi
   fi
 }
 
@@ -113,6 +157,7 @@ set_menu_bar() {
     return
   fi
 
+  local changed=true
   try open "x-apple.systempreferences:com.apple.ControlCenter-Settings.extension"
   sleep 1
   osascript -e "
@@ -131,13 +176,18 @@ set_menu_bar() {
             end if
           end if
         end repeat
+        error \"pop-up 'Automatically hide and show the menu bar' not found\"
       end tell
     end tell
-  " 2>/dev/null || true
+  " >/dev/null || changed=false
   sleep 3
   osascript -e 'tell application "System Settings" to quit' 2>/dev/null || true
   sleep 1
-  echo "  Menu bar: $desired"
+  if $changed; then
+    echo "  Menu bar: $desired"
+  else
+    warn "could not set menu bar auto-hide to '$desired' via UI scripting (continuing)"
+  fi
 }
 
 status() {
@@ -205,14 +255,28 @@ restore_default() {
 start() {
   echo "==> Starting developer mode..."
 
-  # Capture all current settings before changing anything
-  capture_current_state
+  # Capture all current settings before changing anything — but only when
+  # devmode is not already on. On a re-run (e.g. after a partial start) the
+  # current settings are devmode's own, and capturing them would overwrite the
+  # real "previous" values that `off` needs to restore.
+  if [[ "$(read_state '.devmode.active')" == "true" ]]; then
+    echo "  devmode already marked on; keeping the previously saved settings"
+  else
+    capture_current_state
+  fi
 
   # Disable Stage Manager and hide menu bar via UI scripting
   set_stage_manager off
   set_menu_bar "Always"
 
   try yabai --start-service
+  if ! wait_for_yabai; then
+    warn "yabai was started but did not answer within ${YABAI_START_TIMEOUT}s."
+    echo "    It is probably stuck scanning a running app's windows. To find which:" >&2
+    echo "      yabai --stop-service" >&2
+    echo "      yabai --verbose      # the last 'not yet resolved' line names the app" >&2
+    echo "    Quit that app, then run 'yabai --start-service'." >&2
+  fi
   try skhd --start-service
   try brew services start sketchybar
 
@@ -233,6 +297,7 @@ start() {
   killall Dock Finder &>/dev/null || true
 
   echo "Developer mode ON."
+  report_warnings
   status
 }
 
@@ -242,6 +307,13 @@ stop() {
   try yabai --stop-service
   try skhd --stop-service
   try brew services stop sketchybar
+
+  # Remove the launch agent files as well. Both are RunAtLoad, and skhd's
+  # --stop-service only unloads the job without disabling it (yabai's also
+  # disables), so a leftover skhd plist starts skhd again at the next login.
+  # --start-service reinstalls a missing plist, so `on` needs no counterpart.
+  try yabai --uninstall-service
+  try skhd --uninstall-service
 
   # Restore Stage Manager and menu bar via UI scripting
   local sm_was_on
@@ -276,6 +348,7 @@ stop() {
   write_state '.devmode.active = false'
 
   echo "Developer mode OFF."
+  report_warnings
   status
 }
 
