@@ -583,27 +583,27 @@ binding = "Control+Option+Tab"
 id = "workspaceBackAndForth"
 
 [[hotkeys]]
-binding = "Option+Page Down"
+binding = "Option+U"
 id = "switchWorkspace.next"
 
 [[hotkeys]]
-binding = "Option+Page Up"
+binding = "Option+I"
 id = "switchWorkspace.previous"
 
 [[hotkeys]]
-binding = "Option+Left Arrow"
+binding = "Option+H"
 id = "focus.left"
 
 [[hotkeys]]
-binding = "Option+Down Arrow"
+binding = "Option+J"
 id = "focus.down"
 
 [[hotkeys]]
-binding = "Option+Up Arrow"
+binding = "Option+K"
 id = "focus.up"
 
 [[hotkeys]]
-binding = "Option+Right Arrow"
+binding = "Option+L"
 id = "focus.right"
 
 [[hotkeys]]
@@ -719,11 +719,11 @@ binding = "Option+Shift+Right Arrow"
 id = "move.right"
 
 [[hotkeys]]
-binding = "Unassigned"
+binding = "Control+Option+J"
 id = "moveWindowDown"
 
 [[hotkeys]]
-binding = "Unassigned"
+binding = "Control+Option+K"
 id = "moveWindowUp"
 
 [[hotkeys]]
@@ -795,11 +795,11 @@ binding = "Unassigned"
 id = "toggleNativeFullscreen"
 
 [[hotkeys]]
-binding = "Control+Option+Shift+Left Arrow"
+binding = "Control+Option+H"
 id = "moveColumn.left"
 
 [[hotkeys]]
-binding = "Control+Option+Shift+Right Arrow"
+binding = "Control+Option+L"
 id = "moveColumn.right"
 
 [[hotkeys]]
