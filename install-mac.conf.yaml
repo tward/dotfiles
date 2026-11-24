@@ -16,6 +16,7 @@
     ~/.config/kitty: kitty
     ~/.config/lazygit: lazygit
     ~/.config/nvim: neovim
+    ~/.config/omniwm: omniwm
     ~/.config/ranger: ranger
     ~/.config/sketchybar: sketchybar
     ~/.config/skhd: skhd
